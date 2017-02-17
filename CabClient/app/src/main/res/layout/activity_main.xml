@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <FrameLayout
+        android:id="@+id/container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+
+    </FrameLayout>
+
+
+    <ImageButton
+        android:id="@+id/busbutton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentLeft="true"
+        android:layout_marginLeft="10dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bus_button_selector"
+        android:src="@drawable/bus"
+        android:text="Button" />
+
+    <ImageButton
+        android:id="@+id/tersatbutton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@id/busbutton"
+        android:layout_marginLeft="10dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bus_button_selector"
+        android:src="@drawable/terrain"
+        android:text="Button" />
+
+    <ImageButton
+        android:id="@+id/timebutton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@id/tersatbutton"
+        android:layout_marginLeft="10dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bus_button_selector"
+        android:src="@drawable/time"
+        android:text="Button" />
+</RelativeLayout>
