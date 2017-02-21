@@ -14,13 +14,16 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.SystemClock;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
+import android.util.Log;
 import android.view.View;
 import android.view.animation.Interpolator;
 import android.view.animation.LinearInterpolator;
 import android.widget.ImageButton;
 
+import com.bumptech.glide.Glide;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -31,13 +34,18 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.launcher.mummu.cabclient.R;
 import com.launcher.mummu.cabclient.service.FirebaseService;
+import com.launcher.mummu.cabclient.storage.CabStorageUtil;
 import com.launcher.mummu.cabclient.utils.FirebaseUtil;
 import com.launcher.mummu.cabclient.utils.Utils;
 
 import java.util.ArrayList;
+
+import de.hdodenhof.circleimageview.CircleImageView;
 
 /**
  * Created by muhammed on 2/17/2017.
@@ -53,9 +61,14 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
     private static final double LONG_STOP2 = 76.306478;
     ArrayList<LatLng> latLngs = new ArrayList<>();
     Marker marker = null;
+    private Marker userMarker;
+    private MarkerOptions userStopMarkerOptions;
+    private FirebaseAuth mAuth;
     private ImageButton mBusButton = null;
     private ImageButton mTerainSatButton = null;
     private ImageButton mTimeButton = null;
+    private ImageButton mStopButton = null;
+    private CircleImageView mCircleImageView = null;
     private MapFragment mMapFragment;
     private GoogleMap googleMap;
     private LocationManager locationManager;
@@ -79,6 +92,7 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
 
     @Override
     protected void onResume() {
+
         Intent service = new Intent(this, FirebaseService.class);
         startService(service);
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
@@ -89,6 +103,7 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
             bindService(intent, serviceConnection,
                     Context.BIND_AUTO_CREATE);
         }
+        addUserStop();
         super.onResume();
     }
 
@@ -119,10 +134,29 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         mBusButton = (ImageButton) findViewById(R.id.busbutton);
         mTerainSatButton = (ImageButton) findViewById(R.id.tersatbutton);
         mTimeButton = (ImageButton) findViewById(R.id.timebutton);
+        mStopButton = (ImageButton) findViewById(R.id.stopsbutton);
+        mCircleImageView = (CircleImageView) findViewById(R.id.profile_image);
 
         mBusButton.setOnClickListener(this);
         mTerainSatButton.setOnClickListener(this);
         mTimeButton.setOnClickListener(this);
+        mCircleImageView.setOnClickListener(this);
+        mStopButton.setOnClickListener(this);
+        mAuth = FirebaseAuth.getInstance();
+        FirebaseUser user = mAuth.getCurrentUser();
+
+
+        //Load user profile
+        if (user != null) {
+            Log.d("PHOTO", "setUI: " + user.getPhotoUrl());
+            Glide.with(this)
+                    .load(user.getPhotoUrl())
+                    .placeholder(R.drawable.person)
+                    .error(R.drawable.person)
+                    .dontAnimate()
+                    .into(mCircleImageView);
+        }
+
     }
 
     @Override
@@ -137,10 +171,32 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         MarkerOptions claysysMarkerOptions = new MarkerOptions().position(new LatLng(LAT_START, LONG_START)).title("Claysys").icon(BitmapDescriptorFactory.fromResource(R.drawable.claysys_stop));
         MarkerOptions stop1MarkerOptions = new MarkerOptions().position(new LatLng(LAT_STOP1, LONG_STOP1)).title("Chembumukku").icon(BitmapDescriptorFactory.fromResource(R.drawable.stops));
         MarkerOptions stop2MarkerOptions = new MarkerOptions().position(new LatLng(LAT_STOP2, LONG_STOP2)).title("Palarivattom").icon(BitmapDescriptorFactory.fromResource(R.drawable.stops));
+        addUserStop();
         googleMap.addMarker(claysysMarkerOptions);
         googleMap.addMarker(stop1MarkerOptions);
         googleMap.addMarker(stop2MarkerOptions);
 
+
+    }
+
+    private void addUserStop() {
+        LatLng latLng = CabStorageUtil.getLocationLatLng(this);
+        if (latLng != null) {
+            String location = CabStorageUtil.getLocation(this, CabStorageUtil.LOCATION_NAME);
+            if (userStopMarkerOptions == null) {
+                userStopMarkerOptions = new MarkerOptions().position(latLng).title(location).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE));
+            } else {
+                if (userMarker != null) {
+                    userMarker.setPosition(latLng);
+                }
+            }
+            if (googleMap != null) {
+                if (userMarker == null) {
+                    userMarker = googleMap.addMarker(userStopMarkerOptions);
+                }
+
+            }
+        }
     }
 
     private void enableLocation() {
@@ -178,13 +234,8 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         }
         if (latLngs.size() > 1) {
             animateMarker(latLngs.get(1), false, marker);
+//            marker.setPosition(latLngs.get(1));
         }
-
-        if (latLngs.size() > 1) {
-            double v = bearingBetweenLocations(latLngs.get(0), latLngs.get(1));
-            rotateMarker(marker, (float) v);
-        }
-
 
     }
 
@@ -194,7 +245,7 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         Projection proj = googleMap.getProjection();
         Point startPoint = proj.toScreenLocation(m.getPosition());
         final LatLng startLatLng = proj.fromScreenLocation(startPoint);
-        final long duration = 3000;
+        final long duration = 1000;
 
         final Interpolator interpolator = new LinearInterpolator();
 
@@ -219,6 +270,10 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
                     } else {
                         m.setVisible(true);
                     }
+                    double v = bearingBetweenLocations(latLngs.get(0), latLngs.get(1));
+                    Log.d("BEARING", "run: " + v);
+                    rotateMarker(marker, (float) v);
+
                 }
             }
         });
@@ -297,11 +352,24 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
                     googleMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
                 }
                 break;
-
+            case R.id.profile_image:
+                startActivity(new Intent(this, Settings.class));
+                break;
             case R.id.timebutton:
                 //TODO Bus timings
                 break;
+            case R.id.stopsbutton:
+                startActivity(new Intent(this, StopSelectionActivity.class));
+                break;
 
         }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (grantResults.length >= 2) {
+            enableLocation();
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }
 }

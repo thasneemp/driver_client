@@ -7,7 +7,9 @@ import android.view.Window;
 import android.view.WindowManager;
 
 import com.launcher.mummu.cabclient.activities.Container;
+import com.launcher.mummu.cabclient.activities.LoginActivity;
 import com.launcher.mummu.cabclient.activities.MainActivity;
+import com.launcher.mummu.cabclient.storage.CabStorageUtil;
 
 public class Splash extends Container {
 
@@ -22,7 +24,11 @@ public class Splash extends Container {
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
-                startActivity(new Intent(Splash.this, MainActivity.class));
+                if (CabStorageUtil.isLogged(Splash.this, CabStorageUtil.IS_LOGGED)) {
+                    startActivity(new Intent(Splash.this, MainActivity.class));
+                } else {
+                    startActivity(new Intent(Splash.this, LoginActivity.class));
+                }
                 finish();
             }
         }, 1000 * 3);
