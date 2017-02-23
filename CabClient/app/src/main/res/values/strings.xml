@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">CabClient</string>
+    <string name="crash_toast">Sorry, App crashed. Please help us find the bug by sending the bug report</string>
+    <string name="copyright">\u00a9 2017 Claysys inc. All right reserved. </string>
 </resources>

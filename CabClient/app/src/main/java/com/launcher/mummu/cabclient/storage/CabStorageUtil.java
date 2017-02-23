@@ -3,6 +3,9 @@ package com.launcher.mummu.cabclient.storage;
 import android.content.Context;
 
 import com.google.android.gms.maps.model.LatLng;
+import com.launcher.mummu.cabclient.utils.DateDiff;
+
+import java.util.Calendar;
 
 /**
  * Created by muhammed on 2/20/2017.
@@ -16,6 +19,16 @@ public class CabStorageUtil {
     public static final String LOCATION_LAT = "location_lat";
     public static final String LOCATION_LONG = "location_long";
     public static final String LOCATION_LAT_LONG = "location_latlong";
+    public static final String IS_NOTIFICATION_ON = "is_notification_on";
+    public static final String USER_UUID = "uuid";
+    private static final String MORNING_NOTIFICATION = "morning_notification";
+    private static final String EVENING_NOTIFICATION = "evening_notification";
+    private static final String IS_DIALOG_SHOWED = "is_dialog_showed";
+    private static final String DIALOG_TIME = "dialog_time";
+    private static final int MORNING_TIME_START = 16;
+    private static final int MORNING_TIME_END = 20;
+    private static final int EVENING_TIME_START = 7;
+    private static final int EVENING_TIME_END = 8;
 
     public static void setUsername(Context context, String key, String value) {
         CabStorage.insertStringData(context, key, value);
@@ -32,7 +45,7 @@ public class CabStorageUtil {
     }
 
     public static void setLogging(Context context, String key, boolean value) {
-        CabStorage.insertBooleanData(context, key, true);
+        CabStorage.insertBooleanData(context, key, value);
     }
 
     public static void storeLocation(Context context, String key, String value) {
@@ -55,5 +68,118 @@ public class CabStorageUtil {
 
         }
         return latLng;
+    }
+
+    public static boolean isNotificationOn(Context context) {
+        return CabStorage.getBooleanData(context, IS_NOTIFICATION_ON);
+    }
+
+    public static void setNotificationStatus(Context context, boolean isChecked) {
+        CabStorage.insertBooleanData(context, IS_NOTIFICATION_ON, isChecked);
+    }
+
+    public static void setMorningNotificationStatus(Context context, boolean isChecked) {
+        CabStorage.insertBooleanData(context, MORNING_NOTIFICATION, isChecked);
+    }
+
+    public static void setEveningNotificationStatus(Context context, boolean isChecked) {
+        CabStorage.insertBooleanData(context, EVENING_NOTIFICATION, isChecked);
+    }
+
+    public static boolean isMorningChecked(Context context) {
+        return CabStorage.getBooleanData(context, MORNING_NOTIFICATION);
+    }
+
+
+    public static boolean isEveningChecked(Context context) {
+        return CabStorage.getBooleanData(context, EVENING_NOTIFICATION);
+    }
+
+    public static void storeDialogPref(Context context, boolean isShowed) {
+        CabStorage.insertBooleanData(context, IS_DIALOG_SHOWED, isShowed);
+    }
+
+    public static void storeDialogTime(Context context, long timeMillis) {
+        CabStorage.insertLongData(context, DIALOG_TIME, timeMillis);
+    }
+
+    public static boolean isDialogShowedToday(Context context) {
+        return CabStorage.getBooleanData(context, IS_DIALOG_SHOWED);
+    }
+
+    public static boolean isTodayMorningShow(Context context) {
+        monitorMorning(context);
+        if (!isMorningChecked(context)) {
+            return false;
+        }
+        if (isMorningTime()) {
+            return isOverRemindDateMorning(context);
+
+        }
+        return false;
+    }
+
+    public static boolean isTodayEveningShow(Context context) {
+        monitorEvening(context);
+        if (!isEveningChecked(context)) {
+            return false;
+        }
+        if (isEveningTime()) {
+            return isOverRemindDateEvening(context);
+        }
+        return false;
+    }
+
+
+    private static boolean isOverRemindDateEvening(Context context) {
+        return DateDiff.isOverDate(PreferenceHelperEvening.getRemindInterval(context), 1);
+    }
+
+    private static void monitorEvening(Context context) {
+        if (PreferenceHelperEvening.isFirstLaunch(context)) {
+            PreferenceHelperEvening.setInstallDate(context);
+        }
+    }
+
+
+    private static boolean isMorningTime() {
+        Calendar c = Calendar.getInstance();
+        int timeOfDay = c.get(Calendar.HOUR_OF_DAY);
+        if (timeOfDay >= MORNING_TIME_START && timeOfDay < MORNING_TIME_END) {
+            return true;
+        } else {
+            return false;
+
+        }
+    }
+
+
+    private static boolean isEveningTime() {
+        Calendar c = Calendar.getInstance();
+        int timeOfDay = c.get(Calendar.HOUR_OF_DAY);
+        if (timeOfDay >= EVENING_TIME_START && timeOfDay < EVENING_TIME_END) {
+            return true;
+        } else {
+            return false;
+
+        }
+    }
+
+    private static void monitorMorning(Context context) {
+        if (PreferenceHelperMorning.isFirstLaunch(context)) {
+            PreferenceHelperMorning.setInstallDate(context);
+        }
+    }
+
+    private static boolean isOverRemindDateMorning(Context context) {
+        return DateDiff.isOverDate(PreferenceHelperMorning.getRemindInterval(context), 1);
+    }
+
+    public static void setUUid(Context context, String key, String value) {
+        CabStorage.insertStringData(context, key, value);
+    }
+
+    public static String getUUId(Context context) {
+        return CabStorage.getStringData(context, USER_UUID);
     }
 }

@@ -8,6 +8,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.GET_TASKS" />
 
     <uses-feature
         android:glEsVersion="0x00020000"
@@ -38,12 +39,23 @@
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyBuloym1uRsyhqs35NJ8aOgtJHv44Vzjdk" />
+            android:value="AIzaSyA8ZdC_5wxZeS-d34Lw5buOKkgMteVGR4Y" />
         <meta-data
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
 
         <service android:name=".service.FirebaseService" />
+        <service android:name=".pushservice.FirBaseMessaging">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        <service android:name=".pushservice.FireBaseInstanceCreated">
+            <intent-filter>
+                <action android:name="com.google.firebase.INSTANCE_ID_EVENT" />
+            </intent-filter>
+        </service>
+        <service android:name=".service.GPSService" />
     </application>
 
 </manifest>

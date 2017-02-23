@@ -42,4 +42,10 @@ public class CabStorage {
     public static boolean getBooleanData(Context context, String key) {
         return getSharedPreference(context).getBoolean(key, false);
     }
+
+    public static void insertLongData(Context context, String key, long timeMillis) {
+        getSharedPreference(context).edit().putLong(key, timeMillis);
+    }
+
+
 }

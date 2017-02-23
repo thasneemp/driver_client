@@ -24,6 +24,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
 import com.launcher.mummu.cabclient.R;
 import com.launcher.mummu.cabclient.storage.CabStorageUtil;
+import com.launcher.mummu.cabclient.storage.FirebaseStorage;
 
 /**
  * Created by muhammed on 2/20/2017.
@@ -65,15 +66,24 @@ public class LoginActivity extends Container implements GoogleApiClient.OnConnec
     }
 
     @Override
+    protected void onDestroy() {
+        if (mGoogleApiClient != null) {
+            mGoogleApiClient.stopAutoManage(this);
+            mGoogleApiClient.disconnect();
+        }
+        super.onDestroy();
+    }
+
+    @Override
     protected void onResume() {
         mAuth = FirebaseAuth.getInstance();
         mAuth.addAuthStateListener(mAuthListener);
-        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken(getString(R.string.default_web_client_id))
-                .requestEmail()
-                .build();
-        if (mGoogleApiClient != null && mGoogleApiClient.isConnected()) {
-        } else {
+
+        if (mGoogleApiClient == null) {
+            GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                    .requestIdToken(getString(R.string.default_web_client_id))
+                    .requestEmail()
+                    .build();
             mGoogleApiClient = new GoogleApiClient.Builder(this)
                     .enableAutoManage(this /* FragmentActivity */, this /* OnConnectionFailedListener */)
                     .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
@@ -88,6 +98,15 @@ public class LoginActivity extends Container implements GoogleApiClient.OnConnec
             mAuth.removeAuthStateListener(mAuthListener);
         }
         super.onStop();
+    }
+
+    @Override
+    protected void onPause() {
+        if (mGoogleApiClient != null) {
+            mGoogleApiClient.stopAutoManage(this);
+            mGoogleApiClient.disconnect();
+        }
+        super.onPause();
     }
 
     @Override
@@ -136,9 +155,14 @@ public class LoginActivity extends Container implements GoogleApiClient.OnConnec
                             Toast.makeText(LoginActivity.this, "Authentication failed.",
                                     Toast.LENGTH_SHORT).show();
                         } else {
-                            Toast.makeText(LoginActivity.this, "Authentication Succes",
+                            Toast.makeText(LoginActivity.this, "Authentication Success",
                                     Toast.LENGTH_SHORT).show();
+                            CabStorageUtil.setUUid(LoginActivity.this, CabStorageUtil.USER_UUID, task.getResult().getUser().getUid());
+                            CabStorageUtil.setLogging(LoginActivity.this, CabStorageUtil.IS_LOGGED, true);
                             CabStorageUtil.setUsername(LoginActivity.this, CabStorageUtil.USER_NAME, task.getResult().getUser().getEmail());
+
+                            //Inserting to firebase
+                            FirebaseStorage.insertUserInfo(task.getResult().getUser());
                             startActivity(new Intent(LoginActivity.this, MainActivity.class));
                             finish();
                         }

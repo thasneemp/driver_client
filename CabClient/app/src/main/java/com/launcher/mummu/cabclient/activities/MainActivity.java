@@ -16,12 +16,16 @@ import android.os.IBinder;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.View;
 import android.view.animation.Interpolator;
 import android.view.animation.LinearInterpolator;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.google.android.gms.maps.CameraUpdate;
@@ -38,12 +42,24 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.launcher.mummu.cabclient.R;
+import com.launcher.mummu.cabclient.dialoges.PromotionDialogFragment;
+import com.launcher.mummu.cabclient.dialoges.TimeDialogFragment;
+import com.launcher.mummu.cabclient.models.MessageModel;
 import com.launcher.mummu.cabclient.service.FirebaseService;
 import com.launcher.mummu.cabclient.storage.CabStorageUtil;
+import com.launcher.mummu.cabclient.storage.FirebaseStorage;
+import com.launcher.mummu.cabclient.storage.PreferenceHelperEvening;
+import com.launcher.mummu.cabclient.storage.PreferenceHelperMorning;
 import com.launcher.mummu.cabclient.utils.FirebaseUtil;
+import com.launcher.mummu.cabclient.utils.UIUtil;
 import com.launcher.mummu.cabclient.utils.Utils;
 
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
+
 import java.util.ArrayList;
+import java.util.Date;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
@@ -59,8 +75,10 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
     private static final double LONG_STOP1 = 76.322886;
     private static final double LAT_STOP2 = 10.002676;
     private static final double LONG_STOP2 = 76.306478;
+    private static final int REQUEST_SETTINGS = 12458;
     ArrayList<LatLng> latLngs = new ArrayList<>();
     Marker marker = null;
+    private Snackbar snackbar;
     private Marker userMarker;
     private MarkerOptions userStopMarkerOptions;
     private FirebaseAuth mAuth;
@@ -74,6 +92,7 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
     private LocationManager locationManager;
     private boolean isMarkerRotating;
     private MarkerOptions icon;
+    private FrameLayout frameLayout;
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -89,12 +108,28 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         }
     };
 
+//    private ServiceConnection gpsServiceConnection = new ServiceConnection() {
+//        @Override
+//        public void onServiceConnected(ComponentName name, IBinder service) {
+//            GPSService.MyBinder myBinder = (GPSService.MyBinder) service;
+//            GPSService gpsService = myBinder.getService();
+//            gpsService.setOnLocationListener(MainActivity.this);
+//
+//        }
+//
+//        @Override
+//        public void onServiceDisconnected(ComponentName name) {
+//
+//        }
+//    };
 
     @Override
     protected void onResume() {
 
         Intent service = new Intent(this, FirebaseService.class);
         startService(service);
+//        Intent gpsIntent = new Intent(this, GPSService.class);
+//        startService(gpsIntent);
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             Utils.showGPSDisabledAlertToUser(this);
@@ -102,8 +137,18 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
             Intent intent = new Intent(this, FirebaseService.class);
             bindService(intent, serviceConnection,
                     Context.BIND_AUTO_CREATE);
+//            Intent gspService = new Intent(this, GPSService.class);
+//            bindService(gspService, gpsServiceConnection,
+//                    Context.BIND_AUTO_CREATE);
         }
         addUserStop();
+        EventBus.getDefault().register(this);
+//        CabStorageUtil.storeDialogPref(this, false);
+
+
+        //Update user last seen status
+
+        FirebaseStorage.updateLastSeen(new Date(), CabStorageUtil.getUUId(this));
         super.onResume();
     }
 
@@ -114,14 +159,32 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         setUI();
     }
 
+
     @Override
     protected void onPause() {
         try {
             unbindService(serviceConnection);
+//            unbindService(gpsServiceConnection);
         } catch (IllegalArgumentException e) {
             e.printStackTrace();
         }
+        EventBus.getDefault().unregister(this);
         super.onPause();
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onMessageEvent(MessageModel messageModel) {
+        showDialog(messageModel);
+    }
+
+    private Fragment showDialog(MessageModel messageModel) {
+        PromotionDialogFragment fragment = new PromotionDialogFragment();
+//        TimeDialogFragment fragment = new TimeDialogFragment();
+        fragment.setImageUrl(messageModel.getImageUrl());
+        fragment.setMessageText(messageModel.getMessage());
+        fragment.setButtonText(messageModel.getButtonText());
+        fragment.show(getSupportFragmentManager(), fragment.getClass().getName());
+        return fragment;
     }
 
     private void setUI() {
@@ -135,6 +198,7 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         mTerainSatButton = (ImageButton) findViewById(R.id.tersatbutton);
         mTimeButton = (ImageButton) findViewById(R.id.timebutton);
         mStopButton = (ImageButton) findViewById(R.id.stopsbutton);
+        frameLayout = (FrameLayout) findViewById(R.id.container);
         mCircleImageView = (CircleImageView) findViewById(R.id.profile_image);
 
         mBusButton.setOnClickListener(this);
@@ -156,6 +220,7 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
                     .dontAnimate()
                     .into(mCircleImageView);
         }
+
 
     }
 
@@ -201,11 +266,11 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
 
     private void enableLocation() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                googleMap.setMyLocationEnabled(true);
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_REQUEST);
                 return;
             } else {
-                requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST);
+                googleMap.setMyLocationEnabled(true);
             }
         } else {
             googleMap.setMyLocationEnabled(true);
@@ -234,9 +299,28 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         }
         if (latLngs.size() > 1) {
             animateMarker(latLngs.get(1), false, marker);
-//            marker.setPosition(latLngs.get(1));
+//           marker.setPosition(latLngs.get(1));
         }
 
+    }
+
+    @Override
+    public void onLocationNearToYou(float distance) {
+        Fragment fragment = null;
+        if (CabStorageUtil.isNotificationOn(this)) {
+            if (CabStorageUtil.isTodayMorningShow(this) || CabStorageUtil.isTodayEveningShow(this)) {
+                PreferenceHelperMorning.setRemindInterval(this);
+                PreferenceHelperEvening.setRemindInterval(this);
+                PromotionDialogFragment promotionDialogFragment = (PromotionDialogFragment) getSupportFragmentManager().findFragmentByTag(PromotionDialogFragment.class.getName());
+                if (promotionDialogFragment == null && fragment == null) {
+                    MessageModel model = new MessageModel();
+                    model.setButtonText("Dismiss");
+                    model.setImageUrl("");
+                    model.setMessage("Hello your cab is near to you; Please be available");
+                    fragment = showDialog(model);
+                }
+            }
+        }
     }
 
     public void animateMarker(final LatLng toPosition, final boolean hideMarke, final Marker m) {
@@ -353,10 +437,11 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
                 }
                 break;
             case R.id.profile_image:
-                startActivity(new Intent(this, Settings.class));
+                startActivityForResult(new Intent(this, Settings.class), REQUEST_SETTINGS);
                 break;
             case R.id.timebutton:
-                //TODO Bus timings
+                TimeDialogFragment fragment = new TimeDialogFragment();
+                fragment.show(getSupportFragmentManager(), fragment.getClass().getName());
                 break;
             case R.id.stopsbutton:
                 startActivity(new Intent(this, StopSelectionActivity.class));
@@ -367,9 +452,40 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (grantResults.length >= 2) {
+        if (grantResults.length >= 3) {
             enableLocation();
+        } else {
+            Toast.makeText(this, "Cant run application without permission", Toast.LENGTH_SHORT).show();
+            finish();
         }
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == RESULT_CANCELED) {
+            switch (requestCode) {
+                case REQUEST_SETTINGS:
+                    finish();
+                    break;
+            }
+        }
+    }
+
+    @Override
+    public void onNetworkChanged(int status) {
+        super.onNetworkChanged(status);
+        switch (status) {
+            case Container.NETWORK_DISCONNECTED:
+                snackbar = UIUtil.showSnackBar(this, frameLayout, "Network disconnected");
+                break;
+            case Container.NETWORK_CONNECTED:
+                if (snackbar != null) {
+                    snackbar.dismiss();
+                }
+                break;
+        }
+    }
+
 }
