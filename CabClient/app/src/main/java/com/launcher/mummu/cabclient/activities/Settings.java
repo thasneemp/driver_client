@@ -15,6 +15,7 @@ import android.widget.CompoundButton;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
+import com.facebook.login.LoginManager;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.launcher.mummu.cabclient.R;
@@ -140,6 +141,7 @@ public class Settings extends Container implements View.OnClickListener, Compoun
 
     private void logOut() {
         FirebaseAuth.getInstance().signOut();
+        LoginManager.getInstance().logOut();
         CabStorageUtil.setLogging(this, CabStorageUtil.IS_LOGGED, false);
         setResult(RESULT_CANCELED);
         finish();

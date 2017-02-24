@@ -4,9 +4,22 @@
     android:layout_height="match_parent"
     android:padding="10dp">
 
-    <com.google.android.gms.common.SignInButton
+    <Button
         android:id="@+id/sign_in_button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true" />
+        android:layout_centerInParent="true"
+        android:background="#ef5858"
+        android:text="Google"
+        android:textColor="@color/white" />
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/sign_in_button"
+        android:layout_marginTop="5dp"
+        android:background="#3e5eec"
+        android:text="Facebook"
+        android:id="@+id/facebook"
+        android:textColor="@color/white" />
 </RelativeLayout>

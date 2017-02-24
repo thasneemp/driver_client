@@ -6,19 +6,26 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 
+import com.facebook.AccessToken;
+import com.facebook.CallbackManager;
+import com.facebook.FacebookCallback;
+import com.facebook.FacebookException;
+import com.facebook.login.LoginManager;
+import com.facebook.login.LoginResult;
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.auth.api.signin.GoogleSignInResult;
 import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FacebookAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
@@ -26,14 +33,14 @@ import com.launcher.mummu.cabclient.R;
 import com.launcher.mummu.cabclient.storage.CabStorageUtil;
 import com.launcher.mummu.cabclient.storage.FirebaseStorage;
 
+import java.util.Arrays;
+
 /**
  * Created by muhammed on 2/20/2017.
  */
 
-public class LoginActivity extends Container implements GoogleApiClient.OnConnectionFailedListener, View.OnClickListener {
+public class LoginActivity extends Container implements GoogleApiClient.OnConnectionFailedListener, View.OnClickListener, FacebookCallback<LoginResult> {
     private static final int RC_SIGN_IN = 10214;
-
-
     FirebaseAuth.AuthStateListener mAuthListener = new FirebaseAuth.AuthStateListener() {
         @Override
         public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
@@ -49,8 +56,10 @@ public class LoginActivity extends Container implements GoogleApiClient.OnConnec
         }
     };
     private GoogleApiClient mGoogleApiClient;
-    private SignInButton signInButton;
+    private Button mGoogleSignInButton;
+    private Button mFacebookSignInButton;
     private FirebaseAuth mAuth;
+    private CallbackManager callbackManager;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -61,8 +70,13 @@ public class LoginActivity extends Container implements GoogleApiClient.OnConnec
     }
 
     private void setUI() {
-        signInButton = (SignInButton) findViewById(R.id.sign_in_button);
-        signInButton.setOnClickListener(this);
+        mGoogleSignInButton = (Button) findViewById(R.id.sign_in_button);
+        mFacebookSignInButton = (Button) findViewById(R.id.facebook);
+        mGoogleSignInButton.setOnClickListener(this);
+        mFacebookSignInButton.setOnClickListener(this);
+
+        callbackManager = CallbackManager.Factory.create();
+        LoginManager.getInstance().registerCallback(callbackManager, this);
     }
 
     @Override
@@ -116,10 +130,22 @@ public class LoginActivity extends Container implements GoogleApiClient.OnConnec
 
     @Override
     public void onClick(View v) {
-        signIn();
+        switch (v.getId()) {
+            case R.id.sign_in_button:
+                signInGoogle();
+                break;
+            case R.id.facebook:
+                signInFacebook();
+                break;
+        }
+
     }
 
-    private void signIn() {
+    private void signInFacebook() {
+        LoginManager.getInstance().logInWithReadPermissions(this, Arrays.asList("public_profile,email"));
+    }
+
+    private void signInGoogle() {
         Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleApiClient);
         startActivityForResult(signInIntent, RC_SIGN_IN);
     }
@@ -130,7 +156,10 @@ public class LoginActivity extends Container implements GoogleApiClient.OnConnec
         if (requestCode == RC_SIGN_IN) {
             GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
             handleSignInResult(result);
+        } else {
+            callbackManager.onActivityResult(requestCode, resultCode, data);
         }
+
     }
 
     private void handleSignInResult(GoogleSignInResult result) {
@@ -150,23 +179,53 @@ public class LoginActivity extends Container implements GoogleApiClient.OnConnec
                 .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                     @Override
                     public void onComplete(@NonNull Task<AuthResult> task) {
-                        if (!task.isSuccessful()) {
-
-                            Toast.makeText(LoginActivity.this, "Authentication failed.",
-                                    Toast.LENGTH_SHORT).show();
-                        } else {
-                            Toast.makeText(LoginActivity.this, "Authentication Success",
-                                    Toast.LENGTH_SHORT).show();
-                            CabStorageUtil.setUUid(LoginActivity.this, CabStorageUtil.USER_UUID, task.getResult().getUser().getUid());
-                            CabStorageUtil.setLogging(LoginActivity.this, CabStorageUtil.IS_LOGGED, true);
-                            CabStorageUtil.setUsername(LoginActivity.this, CabStorageUtil.USER_NAME, task.getResult().getUser().getEmail());
-
-                            //Inserting to firebase
-                            FirebaseStorage.insertUserInfo(task.getResult().getUser());
-                            startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                            finish();
-                        }
+                        checkAuthentication(task);
                     }
                 });
+    }
+
+
+    @Override
+    public void onSuccess(LoginResult loginResult) {
+        handleFacebookAccessTokenWithFireBase(loginResult.getAccessToken());
+    }
+
+    private void handleFacebookAccessTokenWithFireBase(AccessToken accessToken) {
+        AuthCredential credential = FacebookAuthProvider.getCredential(accessToken.getToken());
+        mAuth.signInWithCredential(credential).addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+            @Override
+            public void onComplete(@NonNull Task<AuthResult> task) {
+                checkAuthentication(task);
+            }
+        });
+    }
+
+    @Override
+    public void onCancel() {
+        Toast.makeText(this, "Authentication failed", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onError(FacebookException error) {
+        Toast.makeText(this, "Authentication failed", Toast.LENGTH_SHORT).show();
+    }
+
+    private void checkAuthentication(Task<AuthResult> task) {
+        if (!task.isSuccessful()) {
+
+            Toast.makeText(LoginActivity.this, "Authentication failed.",
+                    Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(LoginActivity.this, "Authentication Success",
+                    Toast.LENGTH_SHORT).show();
+            CabStorageUtil.setUUid(LoginActivity.this, CabStorageUtil.USER_UUID, task.getResult().getUser().getUid());
+            CabStorageUtil.setLogging(LoginActivity.this, CabStorageUtil.IS_LOGGED, true);
+            CabStorageUtil.setUsername(LoginActivity.this, CabStorageUtil.USER_NAME, task.getResult().getUser().getEmail());
+
+            //Inserting to firebase
+            FirebaseStorage.insertUserInfo(task.getResult().getUser());
+            startActivity(new Intent(LoginActivity.this, MainActivity.class));
+            finish();
+        }
     }
 }
