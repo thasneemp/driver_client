@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/colorPrimary"
     android:padding="10dp">
 
     <Button
@@ -14,12 +16,30 @@
         android:textColor="@color/white" />
 
     <Button
+        android:id="@+id/facebook"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/sign_in_button"
-        android:layout_marginTop="5dp"
+        android:layout_marginTop="10dp"
         android:background="#3e5eec"
         android:text="Facebook"
-        android:id="@+id/facebook"
+        android:textColor="@color/white" />
+
+    <ImageView
+        android:id="@+id/imageView2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="84dp"
+        app:srcCompat="@drawable/cab_small" />
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:gravity="center"
+        android:text="@string/copyright"
         android:textColor="@color/white" />
 </RelativeLayout>

@@ -48,4 +48,7 @@ public class CabStorage {
     }
 
 
+    public static void clearAll(Context context) {
+        getSharedPreference(context).edit().clear().apply();
+    }
 }

@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.FragmentManager;
 import android.support.v7.app.AppCompatDialogFragment;
-import android.text.TextUtils;
 import android.view.Display;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -13,23 +12,20 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.launcher.mummu.cabclient.R;
 import com.launcher.mummu.cabclient.storage.CabStorageUtil;
-import com.launcher.mummu.cabclient.storage.FirebaseStorage;
 
 /**
  * Created by muhammed on 2/1/2017.
  */
 
-public class FeedbackDialogFragment extends AppCompatDialogFragment {
+public class WelcomeDialogFragment extends AppCompatDialogFragment {
     private String imageUrl = "";
     private String messageText = "";
     private String buttonText = "";
-    private EditText mFeedbackEditText;
 
     private ImageView imageViewUrl;
     private TextView messageTextView;
@@ -68,21 +64,21 @@ public class FeedbackDialogFragment extends AppCompatDialogFragment {
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.feedback_dialog_fragment, container, false);
+        View view = inflater.inflate(R.layout.welcome_dialog_fragment, container, false);
         imageViewUrl = (ImageView) view.findViewById(R.id.relativeLayout);
         messageTextView = (TextView) view.findViewById(R.id.messageTextView);
         buttonTextView = (TextView) view.findViewById(R.id.buttonTextView);
-        mFeedbackEditText = (EditText) view.findViewById(R.id.editText);
 
         buttonTextView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!TextUtils.isEmpty(mFeedbackEditText.getText().toString())) {
-                    FirebaseStorage.pushUserComments(CabStorageUtil.getUUId(getContext()), mFeedbackEditText.getText().toString());
-                }
                 dismiss();
+                CabStorageUtil.storeDialogPref(getContext(), true);
+                CabStorageUtil.storeDialogTime(getContext(), System.currentTimeMillis());
             }
         });
+
+        messageTextView.setText("Welcome \"" + CabStorageUtil.getUserDisplayName(getContext()) + "\" to Claysys Cab service");
 
         return view;
     }
@@ -107,6 +103,7 @@ public class FeedbackDialogFragment extends AppCompatDialogFragment {
 
         window.setLayout((int) (width * 0.85), WindowManager.LayoutParams.WRAP_CONTENT);
         window.setGravity(Gravity.CENTER);
+        CabStorageUtil.setFirstTime(getContext(), true);
         super.onResume();
     }
 
@@ -116,6 +113,7 @@ public class FeedbackDialogFragment extends AppCompatDialogFragment {
 
     @Override
     public void show(FragmentManager manager, String tag) {
+
         super.show(manager, tag);
     }
 }

@@ -142,7 +142,7 @@ public class Settings extends Container implements View.OnClickListener, Compoun
     private void logOut() {
         FirebaseAuth.getInstance().signOut();
         LoginManager.getInstance().logOut();
-        CabStorageUtil.setLogging(this, CabStorageUtil.IS_LOGGED, false);
+        CabStorageUtil.clearAll(this);
         setResult(RESULT_CANCELED);
         finish();
     }

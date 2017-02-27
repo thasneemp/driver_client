@@ -1,6 +1,7 @@
 package com.launcher.mummu.cabclient.storage;
 
 import android.content.Context;
+import android.net.Uri;
 
 import com.google.android.gms.maps.model.LatLng;
 import com.launcher.mummu.cabclient.utils.DateDiff;
@@ -21,14 +22,17 @@ public class CabStorageUtil {
     public static final String LOCATION_LAT_LONG = "location_latlong";
     public static final String IS_NOTIFICATION_ON = "is_notification_on";
     public static final String USER_UUID = "uuid";
+    public static final String USER_DISPLAY_NAME = "user_display_name";
     private static final String MORNING_NOTIFICATION = "morning_notification";
     private static final String EVENING_NOTIFICATION = "evening_notification";
     private static final String IS_DIALOG_SHOWED = "is_dialog_showed";
     private static final String DIALOG_TIME = "dialog_time";
-    private static final int MORNING_TIME_START = 16;
-    private static final int MORNING_TIME_END = 20;
+    private static final int MORNING_TIME_START = 12;
+    private static final int MORNING_TIME_END = 15;
     private static final int EVENING_TIME_START = 7;
     private static final int EVENING_TIME_END = 8;
+    private static final String IS_FIRSTIME_DIALOG = "is_first_time_dilaog";
+    private static final String USER_IMAGE = "user_image";
 
     public static void setUsername(Context context, String key, String value) {
         CabStorage.insertStringData(context, key, value);
@@ -181,5 +185,33 @@ public class CabStorageUtil {
 
     public static String getUUId(Context context) {
         return CabStorage.getStringData(context, USER_UUID);
+    }
+
+    public static void setUserDisplayName(Context context, String value) {
+        CabStorage.insertStringData(context, USER_DISPLAY_NAME, value);
+    }
+
+    public static String getUserDisplayName(Context context) {
+        return CabStorage.getStringData(context, USER_DISPLAY_NAME);
+    }
+
+    public static boolean isFirstTime(Context context) {
+        return CabStorage.getBooleanData(context, IS_FIRSTIME_DIALOG);
+    }
+
+    public static void setFirstTime(Context context, boolean value) {
+        CabStorage.insertBooleanData(context, IS_FIRSTIME_DIALOG, value);
+    }
+
+    public static void setUserProfile(Context context, Uri photoUrl) {
+        CabStorage.insertStringData(context, USER_IMAGE, photoUrl.toString());
+    }
+
+    public static String getUserProfile(Context context) {
+        return CabStorage.getStringData(context, USER_IMAGE);
+    }
+
+    public static void clearAll(Context context) {
+        CabStorage.clearAll(context);
     }
 }

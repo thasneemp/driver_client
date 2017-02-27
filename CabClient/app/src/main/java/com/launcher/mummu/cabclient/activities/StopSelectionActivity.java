@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.FragmentTransaction;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Vibrator;
@@ -15,6 +16,9 @@ import android.support.v7.widget.Toolbar;
 import android.view.MenuItem;
 import android.widget.EditText;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.animation.GlideAnimation;
+import com.bumptech.glide.request.target.SimpleTarget;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -24,6 +28,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.launcher.mummu.cabclient.R;
 import com.launcher.mummu.cabclient.storage.CabStorageUtil;
+import com.launcher.mummu.cabclient.utils.UIUtil;
 
 /**
  * Created by muhammed on 2/20/2017.
@@ -119,9 +124,18 @@ public class StopSelectionActivity extends Container implements OnMapReadyCallba
     }
 
     private void addMarker(LatLng latLng) {
-        MarkerOptions icon = new MarkerOptions().position(latLng).draggable(false).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE));
-        googleMap.addMarker(icon);
+        final MarkerOptions icon = new MarkerOptions().position(latLng).draggable(false);
+        Glide.with(this).load(CabStorageUtil.getUserProfile(this)).asBitmap().into(new SimpleTarget<Bitmap>() {
+            @Override
+            public void onResourceReady(Bitmap resource, GlideAnimation<? super Bitmap> glideAnimation) {
+                icon.icon(BitmapDescriptorFactory.fromBitmap(UIUtil.getCircleBitmap(resource, StopSelectionActivity.this)));
+                googleMap.addMarker(icon);
+            }
+        });
+
+
     }
+
 
     private void showMarkerDialoge(final Marker marker) {
         String title = CabStorageUtil.getLocation(this, CabStorageUtil.LOCATION_NAME);

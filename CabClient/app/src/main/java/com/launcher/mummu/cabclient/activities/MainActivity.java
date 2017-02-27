@@ -7,7 +7,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.Point;
+import android.location.Location;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -28,6 +30,8 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.animation.GlideAnimation;
+import com.bumptech.glide.request.target.SimpleTarget;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -44,6 +48,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.launcher.mummu.cabclient.R;
 import com.launcher.mummu.cabclient.dialoges.PromotionDialogFragment;
 import com.launcher.mummu.cabclient.dialoges.TimeDialogFragment;
+import com.launcher.mummu.cabclient.dialoges.WelcomeDialogFragment;
 import com.launcher.mummu.cabclient.models.MessageModel;
 import com.launcher.mummu.cabclient.service.FirebaseService;
 import com.launcher.mummu.cabclient.storage.CabStorageUtil;
@@ -69,8 +74,8 @@ import de.hdodenhof.circleimageview.CircleImageView;
 
 public class MainActivity extends Container implements OnMapReadyCallback, FirebaseService.OnCloudValueChangeListener, View.OnClickListener {
     private static final int PERMISSION_REQUEST = 100;
-    private static final double LAT_START = 10.009167;
-    private static final double LONG_START = 76.362869;
+    private static final double LAT_START = 10.009385;
+    private static final double LONG_START = 76.361632;
     private static final double LAT_STOP1 = 10.011730;
     private static final double LONG_STOP1 = 76.322886;
     private static final double LAT_STOP2 = 10.002676;
@@ -221,21 +226,27 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
                     .into(mCircleImageView);
         }
 
+// show welcome dialog
+        if (!CabStorageUtil.isFirstTime(this)) {
+            WelcomeDialogFragment dialogFragment = new WelcomeDialogFragment();
+            dialogFragment.show(getSupportFragmentManager(), dialogFragment.getClass().getName());
 
+        }
     }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         this.googleMap = googleMap;
         googleMap.getUiSettings().setMyLocationButtonEnabled(false);
+        googleMap.getUiSettings().setTiltGesturesEnabled(false);
         enableLocation();
         addStartPosition();
     }
 
     private void addStartPosition() {
-        MarkerOptions claysysMarkerOptions = new MarkerOptions().position(new LatLng(LAT_START, LONG_START)).title("Claysys").icon(BitmapDescriptorFactory.fromResource(R.drawable.claysys_stop));
-        MarkerOptions stop1MarkerOptions = new MarkerOptions().position(new LatLng(LAT_STOP1, LONG_STOP1)).title("Chembumukku").icon(BitmapDescriptorFactory.fromResource(R.drawable.stops));
-        MarkerOptions stop2MarkerOptions = new MarkerOptions().position(new LatLng(LAT_STOP2, LONG_STOP2)).title("Palarivattom").icon(BitmapDescriptorFactory.fromResource(R.drawable.stops));
+        MarkerOptions claysysMarkerOptions = new MarkerOptions().position(new LatLng(LAT_START, LONG_START)).title(getString(R.string.claysys_stop)).icon(BitmapDescriptorFactory.fromResource(R.drawable.claysys_stop));
+        MarkerOptions stop1MarkerOptions = new MarkerOptions().position(new LatLng(LAT_STOP1, LONG_STOP1)).title(getString(R.string.chembumukku_stop)).icon(BitmapDescriptorFactory.fromResource(R.drawable.stops));
+        MarkerOptions stop2MarkerOptions = new MarkerOptions().position(new LatLng(LAT_STOP2, LONG_STOP2)).title(getString(R.string.palarivattom_stop)).icon(BitmapDescriptorFactory.fromResource(R.drawable.stops));
         addUserStop();
         googleMap.addMarker(claysysMarkerOptions);
         googleMap.addMarker(stop1MarkerOptions);
@@ -245,22 +256,29 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
     }
 
     private void addUserStop() {
-        LatLng latLng = CabStorageUtil.getLocationLatLng(this);
+        final LatLng latLng = CabStorageUtil.getLocationLatLng(this);
         if (latLng != null) {
-            String location = CabStorageUtil.getLocation(this, CabStorageUtil.LOCATION_NAME);
-            if (userStopMarkerOptions == null) {
-                userStopMarkerOptions = new MarkerOptions().position(latLng).title(location).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE));
-            } else {
-                if (userMarker != null) {
-                    userMarker.setPosition(latLng);
-                }
-            }
-            if (googleMap != null) {
-                if (userMarker == null) {
-                    userMarker = googleMap.addMarker(userStopMarkerOptions);
-                }
+            final String location = CabStorageUtil.getLocation(this, CabStorageUtil.LOCATION_NAME);
+            Glide.with(this).load(CabStorageUtil.getUserProfile(this)).asBitmap().into(new SimpleTarget<Bitmap>() {
+                @Override
+                public void onResourceReady(Bitmap resource, GlideAnimation<? super Bitmap> glideAnimation) {
+                    if (userStopMarkerOptions == null) {
+                        userStopMarkerOptions = new MarkerOptions().position(latLng).title(location).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE));
+                        userStopMarkerOptions.icon(BitmapDescriptorFactory.fromBitmap(UIUtil.getCircleBitmap(resource, MainActivity.this)));
+                    } else {
+                        if (userMarker != null) {
+                            userMarker.setPosition(latLng);
+                        }
+                    }
+                    if (googleMap != null) {
+                        if (userMarker == null) {
+                            userMarker = googleMap.addMarker(userStopMarkerOptions);
+                        }
 
-            }
+                    }
+                }
+            });
+
         }
     }
 
@@ -294,7 +312,7 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         }
 
         if (icon == null) {
-            icon = new MarkerOptions().position(latLng).icon(BitmapDescriptorFactory.fromResource(R.drawable.car)).title("Cab");
+            icon = new MarkerOptions().position(latLng).icon(BitmapDescriptorFactory.fromResource(R.drawable.bus_logo)).title("Cab");
             marker = googleMap.addMarker(icon);
         }
         if (latLngs.size() > 1) {
@@ -336,6 +354,7 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         handler.post(new Runnable() {
             @Override
             public void run() {
+
                 long elapsed = SystemClock.uptimeMillis() - start;
                 float t = interpolator.getInterpolation((float) elapsed
                         / duration);
@@ -355,34 +374,43 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
                         m.setVisible(true);
                     }
                     double v = bearingBetweenLocations(latLngs.get(0), latLngs.get(1));
-                    Log.d("BEARING", "run: " + v);
                     rotateMarker(marker, (float) v);
+                    Log.d("BEARING", "run: " + v);
+
 
                 }
             }
         });
     }
 
+    private Location convertLatLngToLocation(LatLng latLng) {
+        Location loc = new Location("someLoc");
+        loc.setLatitude(latLng.latitude);
+        loc.setLongitude(latLng.longitude);
+        return loc;
+    }
+
     private double bearingBetweenLocations(LatLng latLng1, LatLng latLng2) {
+        Location beginL = convertLatLngToLocation(latLng1);
+        Location endL = convertLatLngToLocation(latLng2);
+//        double PI = 3.14159;
+//        double lat1 = latLng1.latitude * PI / 180;
+//        double long1 = latLng1.longitude * PI / 180;
+//        double lat2 = latLng2.latitude * PI / 180;
+//        double long2 = latLng2.longitude * PI / 180;
+//
+//        double dLon = (long2 - long1);
+//
+//        double y = Math.sin(dLon) * Math.cos(lat2);
+//        double x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1)
+//                * Math.cos(lat2) * Math.cos(dLon);
+//
+//        double brng = Math.atan2(y, x);
+//
+//        brng = Math.toDegrees(brng);
+//        brng = (brng + 360) % 360;
 
-        double PI = 3.14159;
-        double lat1 = latLng1.latitude * PI / 180;
-        double long1 = latLng1.longitude * PI / 180;
-        double lat2 = latLng2.latitude * PI / 180;
-        double long2 = latLng2.longitude * PI / 180;
-
-        double dLon = (long2 - long1);
-
-        double y = Math.sin(dLon) * Math.cos(lat2);
-        double x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1)
-                * Math.cos(lat2) * Math.cos(dLon);
-
-        double brng = Math.atan2(y, x);
-
-        brng = Math.toDegrees(brng);
-        brng = (brng + 360) % 360;
-
-        return brng;
+        return beginL.bearingTo(endL);
     }
 
     private void rotateMarker(final Marker marker, final float toRotation) {

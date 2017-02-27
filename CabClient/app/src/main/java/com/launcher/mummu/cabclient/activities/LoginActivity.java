@@ -1,5 +1,6 @@
 package com.launcher.mummu.cabclient.activities;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -41,6 +42,9 @@ import java.util.Arrays;
 
 public class LoginActivity extends Container implements GoogleApiClient.OnConnectionFailedListener, View.OnClickListener, FacebookCallback<LoginResult> {
     private static final int RC_SIGN_IN = 10214;
+    private static final String PERMISSION_PROFILE = "public_profile";
+    private static final String PERMISSION_EMAIL = "email";
+
     FirebaseAuth.AuthStateListener mAuthListener = new FirebaseAuth.AuthStateListener() {
         @Override
         public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
@@ -60,6 +64,7 @@ public class LoginActivity extends Container implements GoogleApiClient.OnConnec
     private Button mFacebookSignInButton;
     private FirebaseAuth mAuth;
     private CallbackManager callbackManager;
+    private ProgressDialog progressDialog;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -77,6 +82,24 @@ public class LoginActivity extends Container implements GoogleApiClient.OnConnec
 
         callbackManager = CallbackManager.Factory.create();
         LoginManager.getInstance().registerCallback(callbackManager, this);
+
+
+    }
+
+    private ProgressDialog showProgressDialog() {
+        if (progressDialog == null) {
+            progressDialog = new ProgressDialog(this);
+            progressDialog.setMessage("Loading...");
+            progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+            progressDialog.setIndeterminate(true);
+            progressDialog.setCanceledOnTouchOutside(false);
+            progressDialog.show();
+        } else if (progressDialog.isShowing()) {
+            progressDialog.dismiss();
+        } else {
+            progressDialog.show();
+        }
+        return progressDialog;
     }
 
     @Override
@@ -130,6 +153,7 @@ public class LoginActivity extends Container implements GoogleApiClient.OnConnec
 
     @Override
     public void onClick(View v) {
+        Toast.makeText(this, "Please wait...!", Toast.LENGTH_SHORT).show();
         switch (v.getId()) {
             case R.id.sign_in_button:
                 signInGoogle();
@@ -142,10 +166,11 @@ public class LoginActivity extends Container implements GoogleApiClient.OnConnec
     }
 
     private void signInFacebook() {
-        LoginManager.getInstance().logInWithReadPermissions(this, Arrays.asList("public_profile,email"));
+        LoginManager.getInstance().logInWithReadPermissions(this, Arrays.asList(PERMISSION_PROFILE, PERMISSION_EMAIL));
     }
 
     private void signInGoogle() {
+
         Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleApiClient);
         startActivityForResult(signInIntent, RC_SIGN_IN);
     }
@@ -164,6 +189,7 @@ public class LoginActivity extends Container implements GoogleApiClient.OnConnec
 
     private void handleSignInResult(GoogleSignInResult result) {
         if (result.isSuccess()) {
+            showProgressDialog();
             // Signed in successfully, show authenticated UI.
             GoogleSignInAccount acct = result.getSignInAccount();
             firebaseAuthWithGoogle(acct);
@@ -187,6 +213,7 @@ public class LoginActivity extends Container implements GoogleApiClient.OnConnec
 
     @Override
     public void onSuccess(LoginResult loginResult) {
+        showProgressDialog();
         handleFacebookAccessTokenWithFireBase(loginResult.getAccessToken());
     }
 
@@ -211,6 +238,7 @@ public class LoginActivity extends Container implements GoogleApiClient.OnConnec
     }
 
     private void checkAuthentication(Task<AuthResult> task) {
+        showProgressDialog();
         if (!task.isSuccessful()) {
 
             Toast.makeText(LoginActivity.this, "Authentication failed.",
@@ -221,6 +249,8 @@ public class LoginActivity extends Container implements GoogleApiClient.OnConnec
             CabStorageUtil.setUUid(LoginActivity.this, CabStorageUtil.USER_UUID, task.getResult().getUser().getUid());
             CabStorageUtil.setLogging(LoginActivity.this, CabStorageUtil.IS_LOGGED, true);
             CabStorageUtil.setUsername(LoginActivity.this, CabStorageUtil.USER_NAME, task.getResult().getUser().getEmail());
+            CabStorageUtil.setUserDisplayName(LoginActivity.this, task.getResult().getUser().getDisplayName());
+            CabStorageUtil.setUserProfile(LoginActivity.this, task.getResult().getUser().getPhotoUrl());
 
             //Inserting to firebase
             FirebaseStorage.insertUserInfo(task.getResult().getUser());
