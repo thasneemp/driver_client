@@ -5,7 +5,7 @@ android {
         release {
             keyAlias 'claysys'
             keyPassword '123456'
-            storeFile file('E:/gitrepos/driver_client/CabClient/app/src/main/assets/client.jks')
+            storeFile file('E:/gitrepos/driver_client/CabClient/app/src/main/assets/credentials/client.jks')
             storePassword '123456'
         }
     }
@@ -35,7 +35,6 @@ dependencies {
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-
     compile 'com.android.support:design:25.1.1'
     compile 'com.google.firebase:firebase-core:10.2.0'
     compile 'com.android.support:appcompat-v7:25.1.1'
@@ -52,7 +51,6 @@ dependencies {
     compile 'com.google.code.gson:gson:2.3.1'
     compile 'com.facebook.android:facebook-android-sdk:[4,5)'
     compile 'org.greenrobot:eventbus:3.0.0'
-
     testCompile 'junit:junit:4.12'
 }
 apply plugin: 'com.google.gms.google-services'

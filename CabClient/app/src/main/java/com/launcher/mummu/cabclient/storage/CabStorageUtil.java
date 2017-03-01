@@ -27,12 +27,13 @@ public class CabStorageUtil {
     private static final String EVENING_NOTIFICATION = "evening_notification";
     private static final String IS_DIALOG_SHOWED = "is_dialog_showed";
     private static final String DIALOG_TIME = "dialog_time";
-    private static final int MORNING_TIME_START = 12;
-    private static final int MORNING_TIME_END = 15;
+    private static final int MORNING_TIME_START = 9;
+    private static final int MORNING_TIME_END = 11;
     private static final int EVENING_TIME_START = 7;
     private static final int EVENING_TIME_END = 8;
-    private static final String IS_FIRSTIME_DIALOG = "is_first_time_dilaog";
+    private static final String IS_FIRST_TIME_DILAOG = "is_first_time_dilaog";
     private static final String USER_IMAGE = "user_image";
+    private static final String NOTIFICATION_KILOMETER_RANGE = "notification_km_range";
 
     public static void setUsername(Context context, String key, String value) {
         CabStorage.insertStringData(context, key, value);
@@ -41,7 +42,7 @@ public class CabStorageUtil {
     }
 
     public static boolean isLogged(Context context, String key) {
-        return CabStorage.getBooleanData(context, key);
+        return CabStorage.getBooleanDataDefaultFalse(context, key);
     }
 
     public static String getUsername(Context context, String key) {
@@ -75,7 +76,7 @@ public class CabStorageUtil {
     }
 
     public static boolean isNotificationOn(Context context) {
-        return CabStorage.getBooleanData(context, IS_NOTIFICATION_ON);
+        return CabStorage.getBooleanDataDefaultTrue(context, IS_NOTIFICATION_ON);
     }
 
     public static void setNotificationStatus(Context context, boolean isChecked) {
@@ -91,12 +92,12 @@ public class CabStorageUtil {
     }
 
     public static boolean isMorningChecked(Context context) {
-        return CabStorage.getBooleanData(context, MORNING_NOTIFICATION);
+        return CabStorage.getBooleanDataDefaultTrue(context, MORNING_NOTIFICATION);
     }
 
 
     public static boolean isEveningChecked(Context context) {
-        return CabStorage.getBooleanData(context, EVENING_NOTIFICATION);
+        return CabStorage.getBooleanDataDefaultTrue(context, EVENING_NOTIFICATION);
     }
 
     public static void storeDialogPref(Context context, boolean isShowed) {
@@ -108,7 +109,7 @@ public class CabStorageUtil {
     }
 
     public static boolean isDialogShowedToday(Context context) {
-        return CabStorage.getBooleanData(context, IS_DIALOG_SHOWED);
+        return CabStorage.getBooleanDataDefaultFalse(context, IS_DIALOG_SHOWED);
     }
 
     public static boolean isTodayMorningShow(Context context) {
@@ -196,11 +197,11 @@ public class CabStorageUtil {
     }
 
     public static boolean isFirstTime(Context context) {
-        return CabStorage.getBooleanData(context, IS_FIRSTIME_DIALOG);
+        return CabStorage.getBooleanDataDefaultFalse(context, IS_FIRST_TIME_DILAOG);
     }
 
     public static void setFirstTime(Context context, boolean value) {
-        CabStorage.insertBooleanData(context, IS_FIRSTIME_DIALOG, value);
+        CabStorage.insertBooleanData(context, IS_FIRST_TIME_DILAOG, value);
     }
 
     public static void setUserProfile(Context context, Uri photoUrl) {
@@ -213,5 +214,13 @@ public class CabStorageUtil {
 
     public static void clearAll(Context context) {
         CabStorage.clearAll(context);
+    }
+
+    public static void setNotificationKilometerRange(Context context, long oneKilomter) {
+        CabStorage.insertLongData(context, NOTIFICATION_KILOMETER_RANGE, oneKilomter);
+    }
+
+    public static long getNotificationKilometerRange(Context context) {
+        return CabStorage.getLongData(context, NOTIFICATION_KILOMETER_RANGE);
     }
 }

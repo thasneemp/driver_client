@@ -16,6 +16,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.launcher.mummu.cabclient.CabUserApplication;
+import com.launcher.mummu.cabclient.dialoges.NotificationTimeDialogFragment;
 import com.launcher.mummu.cabclient.models.MessageModel;
 import com.launcher.mummu.cabclient.storage.CabStorageUtil;
 import com.launcher.mummu.cabclient.storage.PreferenceHelperEvening;
@@ -81,12 +82,12 @@ public class FirebaseService extends Service implements ChildEventListener, Valu
             if (locationLatLng != null) {
                 float[] floats = new float[1];
                 Location.distanceBetween(locationLatLng.latitude, locationLatLng.longitude, latiudeLn, longitudeLn, floats);
-                if (floats[0] < 1200) {
+                long kilometerRange = CabStorageUtil.getNotificationKilometerRange(getApplicationContext());
+                if (floats[0] < (kilometerRange == 0l ? NotificationTimeDialogFragment.ONE_KILOMTER : kilometerRange)) {
                     if (listener != null) {
                         listener.onLocationNearToYou(floats[0]);
                     }
                     doBackCheck();
-
                 }
 
             }
@@ -100,10 +101,11 @@ public class FirebaseService extends Service implements ChildEventListener, Valu
         if (UIUtil.isAppIsInBackground(this)) {
             if (CabStorageUtil.isNotificationOn(this)) {
                 if (CabStorageUtil.isTodayMorningShow(this) || CabStorageUtil.isTodayEveningShow(this)) {
+                    long kilometerRange = CabStorageUtil.getNotificationKilometerRange(this);
                     PreferenceHelperMorning.setRemindInterval(this);
                     PreferenceHelperEvening.setRemindInterval(this);
                     MessageModel model = new MessageModel();
-                    model.setMessage("Hello your cab is near to you; Please be available");
+                    model.setMessage("Hello your cab is near to " + (kilometerRange == 0l ? (1000 / 1000) : (kilometerRange / 1000)) + "Km; Please be available");
 
                     // STORE ONE PREFERENCE TIME
 

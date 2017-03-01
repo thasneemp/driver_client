@@ -9,6 +9,7 @@ import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Point;
+import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Build;
@@ -39,6 +40,7 @@ import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.Projection;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -49,13 +51,13 @@ import com.launcher.mummu.cabclient.R;
 import com.launcher.mummu.cabclient.dialoges.PromotionDialogFragment;
 import com.launcher.mummu.cabclient.dialoges.TimeDialogFragment;
 import com.launcher.mummu.cabclient.dialoges.WelcomeDialogFragment;
+import com.launcher.mummu.cabclient.models.LocationModel;
 import com.launcher.mummu.cabclient.models.MessageModel;
 import com.launcher.mummu.cabclient.service.FirebaseService;
 import com.launcher.mummu.cabclient.storage.CabStorageUtil;
 import com.launcher.mummu.cabclient.storage.FirebaseStorage;
 import com.launcher.mummu.cabclient.storage.PreferenceHelperEvening;
 import com.launcher.mummu.cabclient.storage.PreferenceHelperMorning;
-import com.launcher.mummu.cabclient.utils.FirebaseUtil;
 import com.launcher.mummu.cabclient.utils.UIUtil;
 import com.launcher.mummu.cabclient.utils.Utils;
 
@@ -81,6 +83,8 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
     private static final double LAT_STOP2 = 10.002676;
     private static final double LONG_STOP2 = 76.306478;
     private static final int REQUEST_SETTINGS = 12458;
+    private static final float BEARING_OFFSET = 20;
+    private static final int ANIMATE_SPEEED_TURN = 1000;
     ArrayList<LatLng> latLngs = new ArrayList<>();
     Marker marker = null;
     private Snackbar snackbar;
@@ -276,6 +280,26 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
                         }
 
                     }
+
+                }
+
+                @Override
+                public void onLoadFailed(Exception e, Drawable errorDrawable) {
+                    if (userStopMarkerOptions == null) {
+                        userStopMarkerOptions = new MarkerOptions().position(latLng).title(location).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE));
+                        userStopMarkerOptions.icon(BitmapDescriptorFactory.defaultMarker());
+                    } else {
+                        if (userMarker != null) {
+                            userMarker.setPosition(latLng);
+                        }
+                    }
+                    if (googleMap != null) {
+                        if (userMarker == null) {
+                            userMarker = googleMap.addMarker(userStopMarkerOptions);
+                        }
+
+                    }
+                    super.onLoadFailed(e, errorDrawable);
                 }
             });
 
@@ -298,12 +322,8 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
 
     @Override
     public void onValueChanged(DataSnapshot dataSnapshot) {
-        DataSnapshot latitude = dataSnapshot.child(FirebaseUtil.LATITUDE_TAG);
-        DataSnapshot longitude = dataSnapshot.child(FirebaseUtil.LONGITUDE_TAG);
-        double latiudeLn = (double) latitude.getValue();
-        double longitudeLn = (double) longitude.getValue();
-        LatLng latLng = new LatLng(latiudeLn, longitudeLn);
-
+        LocationModel value = dataSnapshot.getValue(LocationModel.class);
+        LatLng latLng = new LatLng(value.getLat(), value.getLonge());
         if (latLngs.size() > 1) {
             latLngs.remove(0);
             latLngs.add(latLng);
@@ -316,7 +336,7 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
             marker = googleMap.addMarker(icon);
         }
         if (latLngs.size() > 1) {
-            animateMarker(latLngs.get(1), false, marker);
+            animateMarker(latLngs.get(1), false, marker, value.getBearing());
 //           marker.setPosition(latLngs.get(1));
         }
 
@@ -329,26 +349,26 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
             if (CabStorageUtil.isTodayMorningShow(this) || CabStorageUtil.isTodayEveningShow(this)) {
                 PreferenceHelperMorning.setRemindInterval(this);
                 PreferenceHelperEvening.setRemindInterval(this);
+                long kilometerRange = CabStorageUtil.getNotificationKilometerRange(this);
                 PromotionDialogFragment promotionDialogFragment = (PromotionDialogFragment) getSupportFragmentManager().findFragmentByTag(PromotionDialogFragment.class.getName());
                 if (promotionDialogFragment == null && fragment == null) {
                     MessageModel model = new MessageModel();
                     model.setButtonText("Dismiss");
                     model.setImageUrl("");
-                    model.setMessage("Hello your cab is near to you; Please be available");
+                    model.setMessage("Hello your cab is near to " + (kilometerRange == 0l ? (1000 / 1000) : (kilometerRange / 1000)) + "Km; Please be available");
                     fragment = showDialog(model);
                 }
             }
         }
     }
 
-    public void animateMarker(final LatLng toPosition, final boolean hideMarke, final Marker m) {
+    public void animateMarker(final LatLng toPosition, final boolean hideMarke, final Marker m, final float value) {
         final Handler handler = new Handler();
         final long start = SystemClock.uptimeMillis();
         Projection proj = googleMap.getProjection();
         Point startPoint = proj.toScreenLocation(m.getPosition());
         final LatLng startLatLng = proj.fromScreenLocation(startPoint);
         final long duration = 1000;
-
         final Interpolator interpolator = new LinearInterpolator();
 
         handler.post(new Runnable() {
@@ -373,10 +393,19 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
                     } else {
                         m.setVisible(true);
                     }
-                    double v = bearingBetweenLocations(latLngs.get(0), latLngs.get(1));
-                    rotateMarker(marker, (float) v);
-                    Log.d("BEARING", "run: " + v);
+//                    double v = bearingBetweenLocations(latLngs.get(0), latLngs.get(1));
+//                    Log.d("BEARING", "run: " + v);
 
+                    CameraPosition cameraPosition =
+                            new CameraPosition.Builder()
+                                    .target(latLngs.get(1)) // changed this...
+                                    .bearing((value))
+                                    .zoom(googleMap.getCameraPosition().zoom)
+                                    .build();
+                    googleMap.animateCamera(
+                            CameraUpdateFactory.newCameraPosition(cameraPosition),
+                            ANIMATE_SPEEED_TURN,
+                            null);
 
                 }
             }

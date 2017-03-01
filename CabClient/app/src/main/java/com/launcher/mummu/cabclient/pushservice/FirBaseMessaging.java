@@ -32,13 +32,22 @@ public class FirBaseMessaging extends FirebaseMessagingService {
 
         if (body != null && body.length() > 0) {
             MessageModel messageModel = getParsedResult(body);
-            if (UIUtil.isAppIsInBackground(this)) {
-                sendNotification(messageModel.getMessage(), messageModel);
-            } else {
-                EventBus.getDefault().post(messageModel);
-            }
+            sendTo(messageModel);
+        } else {
+            MessageModel model = new MessageModel();
+            model.setMessage(remoteMessage.getNotification().getBody());
+            model.setButtonText("DISMISS");
+            sendTo(model);
         }
         super.onMessageReceived(remoteMessage);
+    }
+
+    private void sendTo(MessageModel messageModel) {
+        if (UIUtil.isAppIsInBackground(this)) {
+            sendNotification(messageModel.getMessage(), messageModel);
+        } else {
+            EventBus.getDefault().post(messageModel);
+        }
     }
 
     private MessageModel getParsedResult(String body) {

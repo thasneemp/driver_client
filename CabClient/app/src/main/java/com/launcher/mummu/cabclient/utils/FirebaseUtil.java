@@ -8,7 +8,8 @@ public class FirebaseUtil {
     public static final String MAIN_TAG = "main";
     public static final String LOCATION_TAG = "location";
     public static final String LATITUDE_TAG = "lat";
-    public static final String LONGITUDE_TAG = "long";
+    public static final String LONGITUDE_TAG = "longe";
+    public static final String BEARING = "bearing";
     public static final String FIREBASE_URL = "https://claysysprojects.firebaseio.com/";
     public static final String USERS = "users";
     public static final String NAME = "name";

@@ -4,7 +4,6 @@ import android.app.ActivityManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -85,7 +84,6 @@ public class UIUtil {
         canvas.drawOval(rectF, paint);
 
         paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_IN));
-        canvas.drawBitmap(BitmapFactory.decodeResource(context.getResources(), R.drawable.user_marker), rect, rect, paint);
         canvas.drawBitmap(bitmap, rect, rect, paint);
 
 //        bitmap.recycle();

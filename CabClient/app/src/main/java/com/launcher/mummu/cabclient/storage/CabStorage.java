@@ -39,16 +39,24 @@ public class CabStorage {
      * @param key
      * @return
      */
-    public static boolean getBooleanData(Context context, String key) {
+    public static boolean getBooleanDataDefaultFalse(Context context, String key) {
         return getSharedPreference(context).getBoolean(key, false);
     }
 
     public static void insertLongData(Context context, String key, long timeMillis) {
-        getSharedPreference(context).edit().putLong(key, timeMillis);
+        getSharedPreference(context).edit().putLong(key, timeMillis).apply();
     }
 
 
     public static void clearAll(Context context) {
         getSharedPreference(context).edit().clear().apply();
+    }
+
+    public static long getLongData(Context context, String key) {
+        return getSharedPreference(context).getLong(key, 0l);
+    }
+
+    public static boolean getBooleanDataDefaultTrue(Context context, String key) {
+        return getSharedPreference(context).getBoolean(key, true);
     }
 }

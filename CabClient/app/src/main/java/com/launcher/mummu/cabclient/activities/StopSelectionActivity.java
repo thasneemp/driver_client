@@ -5,6 +5,7 @@ import android.app.FragmentTransaction;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Vibrator;
@@ -13,6 +14,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.Toolbar;
+import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.EditText;
 
@@ -27,6 +29,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.launcher.mummu.cabclient.R;
+import com.launcher.mummu.cabclient.dialoges.NotificationTimeDialogFragment;
 import com.launcher.mummu.cabclient.storage.CabStorageUtil;
 import com.launcher.mummu.cabclient.utils.UIUtil;
 
@@ -35,6 +38,7 @@ import com.launcher.mummu.cabclient.utils.UIUtil;
  */
 
 public class StopSelectionActivity extends Container implements OnMapReadyCallback, GoogleMap.OnMapLongClickListener {
+
     private static final int REQUEST_PERMISSION = 10214;
     private MapFragment mMapFragment;
     private GoogleMap googleMap;
@@ -110,6 +114,10 @@ public class StopSelectionActivity extends Container implements OnMapReadyCallba
             case android.R.id.home:
                 finish();
                 break;
+            case R.id.notificationTime:
+                NotificationTimeDialogFragment fragment = new NotificationTimeDialogFragment();
+                fragment.show(getSupportFragmentManager(), fragment.getClass().getName());
+                break;
         }
         return super.onOptionsItemSelected(item);
     }
@@ -130,6 +138,13 @@ public class StopSelectionActivity extends Container implements OnMapReadyCallba
             public void onResourceReady(Bitmap resource, GlideAnimation<? super Bitmap> glideAnimation) {
                 icon.icon(BitmapDescriptorFactory.fromBitmap(UIUtil.getCircleBitmap(resource, StopSelectionActivity.this)));
                 googleMap.addMarker(icon);
+            }
+
+            @Override
+            public void onLoadFailed(Exception e, Drawable errorDrawable) {
+                icon.icon(BitmapDescriptorFactory.defaultMarker());
+                googleMap.addMarker(icon);
+                super.onLoadFailed(e, errorDrawable);
             }
         });
 
@@ -163,4 +178,11 @@ public class StopSelectionActivity extends Container implements OnMapReadyCallba
         Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
         vibrator.vibrate(i);
     }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.stop_menu, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
 }

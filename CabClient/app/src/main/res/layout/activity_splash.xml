@@ -5,7 +5,7 @@
     android:id="@+id/activity_splash"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/colorPrimary"
+    android:background="@drawable/bg"
     tools:context="com.launcher.mummu.cabclient.Splash">
 
     <ImageView
@@ -17,16 +17,6 @@
         android:scaleType="fitXY" />
 
     <TextView
-        android:id="@+id/textView2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:text="ClaysysCab"
-
-        android:textColor="#01534b"
-        android:textSize="35sp" />
-
-    <TextView
         android:id="@+id/textView4"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -34,13 +24,13 @@
         android:layout_centerHorizontal="true"
         android:layout_marginBottom="10dp"
         android:text="@string/copyright"
-        android:textColor="@color/white" />
+        android:textColor="@color/white"
+        android:visibility="gone" />
 
     <ImageView
         android:id="@+id/imageView4"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/textView2"
         android:layout_centerInParent="true"
-        app:srcCompat="@drawable/cab_small" />
+        app:srcCompat="@drawable/logo" />
 </RelativeLayout>
