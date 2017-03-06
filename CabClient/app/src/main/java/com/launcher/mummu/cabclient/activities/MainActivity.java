@@ -28,6 +28,7 @@ import android.view.animation.Interpolator;
 import android.view.animation.LinearInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
@@ -47,17 +48,26 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.launcher.mummu.cabclient.R;
 import com.launcher.mummu.cabclient.dialoges.PromotionDialogFragment;
 import com.launcher.mummu.cabclient.dialoges.TimeDialogFragment;
 import com.launcher.mummu.cabclient.dialoges.WelcomeDialogFragment;
 import com.launcher.mummu.cabclient.models.LocationModel;
 import com.launcher.mummu.cabclient.models.MessageModel;
+import com.launcher.mummu.cabclient.models.distanceapi.Distance;
+import com.launcher.mummu.cabclient.models.distanceapi.DistanceMain;
+import com.launcher.mummu.cabclient.models.distanceapi.Duration;
+import com.launcher.mummu.cabclient.models.distanceapi.Elements;
+import com.launcher.mummu.cabclient.models.distanceapi.Rows;
 import com.launcher.mummu.cabclient.service.FirebaseService;
+import com.launcher.mummu.cabclient.service.GPSService;
 import com.launcher.mummu.cabclient.storage.CabStorageUtil;
 import com.launcher.mummu.cabclient.storage.FirebaseStorage;
 import com.launcher.mummu.cabclient.storage.PreferenceHelperEvening;
 import com.launcher.mummu.cabclient.storage.PreferenceHelperMorning;
+import com.launcher.mummu.cabclient.utils.NetworkManager;
 import com.launcher.mummu.cabclient.utils.UIUtil;
 import com.launcher.mummu.cabclient.utils.Utils;
 
@@ -74,7 +84,7 @@ import de.hdodenhof.circleimageview.CircleImageView;
  * Created by muhammed on 2/17/2017.
  */
 
-public class MainActivity extends Container implements OnMapReadyCallback, FirebaseService.OnCloudValueChangeListener, View.OnClickListener {
+public class MainActivity extends Container implements OnMapReadyCallback, FirebaseService.OnCloudValueChangeListener, View.OnClickListener, GPSService.OnLocationChange {
     private static final int PERMISSION_REQUEST = 100;
     private static final double LAT_START = 10.009385;
     private static final double LONG_START = 76.361632;
@@ -85,8 +95,13 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
     private static final int REQUEST_SETTINGS = 12458;
     private static final float BEARING_OFFSET = 20;
     private static final int ANIMATE_SPEEED_TURN = 1000;
+
+    private static final int TIME_INTERVAL = 20000; // # milliseconds, desired time passed between two back presses.
+    private static final String URL_DISTANCE = "https://maps.googleapis.com/maps/api/distancematrix/json?";
+    private static final String URL_BALANCE = "mode=driving&language=en&key=AIzaSyBkBF07tPOxZVC9c7PhKPGGrWPn3z0_QO8";
     ArrayList<LatLng> latLngs = new ArrayList<>();
     Marker marker = null;
+    private long mBackPressed;
     private Snackbar snackbar;
     private Marker userMarker;
     private MarkerOptions userStopMarkerOptions;
@@ -95,6 +110,7 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
     private ImageButton mTerainSatButton = null;
     private ImageButton mTimeButton = null;
     private ImageButton mStopButton = null;
+    private ImageButton mMyLocationButton = null;
     private CircleImageView mCircleImageView = null;
     private MapFragment mMapFragment;
     private GoogleMap googleMap;
@@ -102,6 +118,8 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
     private boolean isMarkerRotating;
     private MarkerOptions icon;
     private FrameLayout frameLayout;
+    private TextView mInfoTextView;
+    private Location myLocation;
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -117,45 +135,42 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         }
     };
 
-//    private ServiceConnection gpsServiceConnection = new ServiceConnection() {
-//        @Override
-//        public void onServiceConnected(ComponentName name, IBinder service) {
-//            GPSService.MyBinder myBinder = (GPSService.MyBinder) service;
-//            GPSService gpsService = myBinder.getService();
-//            gpsService.setOnLocationListener(MainActivity.this);
-//
-//        }
-//
-//        @Override
-//        public void onServiceDisconnected(ComponentName name) {
-//
-//        }
-//    };
+    private ServiceConnection gpsServiceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            GPSService.MyBinder myBinder = (GPSService.MyBinder) service;
+            GPSService gpsService = myBinder.getService();
+            gpsService.setOnLocationListener(MainActivity.this);
+
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+
+        }
+    };
+
 
     @Override
     protected void onResume() {
 
         Intent service = new Intent(this, FirebaseService.class);
         startService(service);
-//        Intent gpsIntent = new Intent(this, GPSService.class);
-//        startService(gpsIntent);
+        Intent gpsService = new Intent(this, GPSService.class);
+        startService(gpsService);
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             Utils.showGPSDisabledAlertToUser(this);
         } else {
-            Intent intent = new Intent(this, FirebaseService.class);
-            bindService(intent, serviceConnection,
+            Intent intent = new Intent(this, GPSService.class);
+            bindService(intent, gpsServiceConnection,
                     Context.BIND_AUTO_CREATE);
-//            Intent gspService = new Intent(this, GPSService.class);
-//            bindService(gspService, gpsServiceConnection,
-//                    Context.BIND_AUTO_CREATE);
         }
+        Intent intent = new Intent(this, FirebaseService.class);
+        bindService(intent, serviceConnection,
+                Context.BIND_AUTO_CREATE);
         addUserStop();
         EventBus.getDefault().register(this);
-//        CabStorageUtil.storeDialogPref(this, false);
-
-
-        //Update user last seen status
 
         FirebaseStorage.updateLastSeen(new Date(), CabStorageUtil.getUUId(this));
         super.onResume();
@@ -173,7 +188,7 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
     protected void onPause() {
         try {
             unbindService(serviceConnection);
-//            unbindService(gpsServiceConnection);
+            unbindService(gpsServiceConnection);
         } catch (IllegalArgumentException e) {
             e.printStackTrace();
         }
@@ -206,11 +221,14 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         mBusButton = (ImageButton) findViewById(R.id.busbutton);
         mTerainSatButton = (ImageButton) findViewById(R.id.tersatbutton);
         mTimeButton = (ImageButton) findViewById(R.id.timebutton);
+        mMyLocationButton = (ImageButton) findViewById(R.id.myLocationbutton);
         mStopButton = (ImageButton) findViewById(R.id.stopsbutton);
         frameLayout = (FrameLayout) findViewById(R.id.container);
         mCircleImageView = (CircleImageView) findViewById(R.id.profile_image);
+        mInfoTextView = (TextView) findViewById(R.id.kilometerDisplayTextView);
 
         mBusButton.setOnClickListener(this);
+        mMyLocationButton.setOnClickListener(this);
         mTerainSatButton.setOnClickListener(this);
         mTimeButton.setOnClickListener(this);
         mCircleImageView.setOnClickListener(this);
@@ -243,7 +261,8 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         this.googleMap = googleMap;
         googleMap.getUiSettings().setMyLocationButtonEnabled(false);
         googleMap.getUiSettings().setTiltGesturesEnabled(false);
-        enableLocation();
+        googleMap.setTrafficEnabled(true);
+        googleMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
         addStartPosition();
     }
 
@@ -306,16 +325,16 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         }
     }
 
-    private void enableLocation() {
+    private void enableLocation(boolean value) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_REQUEST);
                 return;
             } else {
-                googleMap.setMyLocationEnabled(true);
+                googleMap.setMyLocationEnabled(value);
             }
         } else {
-            googleMap.setMyLocationEnabled(true);
+            googleMap.setMyLocationEnabled(value);
         }
 
     }
@@ -329,6 +348,7 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
             latLngs.add(latLng);
         } else {
             latLngs.add(latLng);
+            moveToBusLocation(latLng);
         }
 
         if (icon == null) {
@@ -337,8 +357,62 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         }
         if (latLngs.size() > 1) {
             animateMarker(latLngs.get(1), false, marker, value.getBearing());
-//           marker.setPosition(latLngs.get(1));
+            if (myLocation != null) {
+                showText(myLocation, convertLatLngToLocation(latLngs.get(1)));
+            }
+
         }
+
+    }
+
+    private void showText(Location fromLatLng, Location toLatLng) {
+        if (mBackPressed + TIME_INTERVAL > System.currentTimeMillis()) {
+            return;
+        } else {
+            NetworkManager.getInstance().call(URL_DISTANCE + "origins=" +
+                    fromLatLng.getLatitude() + "," + fromLatLng.getLongitude() +
+                    "&" + "destinations=" + toLatLng.getLatitude() + ","
+                    + toLatLng.getLongitude() + "&"
+                    + URL_BALANCE, this).setOnApiReslutCallback(new NetworkManager.OnApiResult() {
+                @Override
+                public void onResult(Exception e, JsonObject result) {
+                    if (result != null) {
+                        Gson gson = new Gson();
+                        DistanceMain distanceMain = gson.fromJson(result.toString(), DistanceMain.class);
+                        Rows[] rows = distanceMain.getRows();
+                        if (rows != null && rows.length > 0) {
+                            Rows row = rows[0];
+                            Elements[] elements = row.getElements();
+                            if (elements.length > 0) {
+                                Distance distance = elements[0].getDistance();
+                                Duration duration = elements[0].getDuration();
+                                mInfoTextView.setVisibility(View.VISIBLE);
+                                mInfoTextView.setText("Cab is " + distance.getText() + " away from you,\nit will take approximately " +
+                                        duration.getText() + ".\nNow at " + distanceMain.getDestination_addresses()[0].split(",")[0]);
+                                mBackPressed = System.currentTimeMillis();
+                            }
+                        }
+                    }
+
+                }
+            });
+        }
+
+
+//        try {
+//            float v = fromLatLng.distanceTo(toLatLng);
+//            if (v > 1000) {
+//                float kilometer = v / 1000;
+//                mInfoTextView.setText("Cab is " + new DecimalFormat("##.##").format(kilometer) + "Km away from you");
+//            } else if (v < 10) {
+//                mInfoTextView.setText("Cab is near to you");
+//            } else {
+//                mInfoTextView.setText("Cab is " + (int) v + "m away from you");
+//            }
+//
+//        } catch (Exception e) {
+//            FirebaseCrash.report(e);
+//        }
 
     }
 
@@ -356,7 +430,7 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
                     model.setButtonText("Dismiss");
                     model.setImageUrl("");
                     model.setMessage("Hello your cab is near to " + (kilometerRange == 0l ? (1000 / 1000) : (kilometerRange / 1000)) + "Km; Please be available");
-                    fragment = showDialog(model);
+                    showDialog(model);
                 }
             }
         }
@@ -419,74 +493,75 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         return loc;
     }
 
-    private double bearingBetweenLocations(LatLng latLng1, LatLng latLng2) {
-        Location beginL = convertLatLngToLocation(latLng1);
-        Location endL = convertLatLngToLocation(latLng2);
-//        double PI = 3.14159;
-//        double lat1 = latLng1.latitude * PI / 180;
-//        double long1 = latLng1.longitude * PI / 180;
-//        double lat2 = latLng2.latitude * PI / 180;
-//        double long2 = latLng2.longitude * PI / 180;
+//    private double bearingBetweenLocations(LatLng latLng1, LatLng latLng2) {
+//        Location beginL = convertLatLngToLocation(latLng1);
+//        Location endL = convertLatLngToLocation(latLng2);
+////        double PI = 3.14159;
+////        double lat1 = latLng1.latitude * PI / 180;
+////        double long1 = latLng1.longitude * PI / 180;
+////        double lat2 = latLng2.latitude * PI / 180;
+////        double long2 = latLng2.longitude * PI / 180;
+////
+////        double dLon = (long2 - long1);
+////
+////        double y = Math.sin(dLon) * Math.cos(lat2);
+////        double x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1)
+////                * Math.cos(lat2) * Math.cos(dLon);
+////
+////        double brng = Math.atan2(y, x);
+////
+////        brng = Math.toDegrees(brng);
+////        brng = (brng + 360) % 360;
 //
-//        double dLon = (long2 - long1);
+//        return beginL.bearingTo(endL);
+//    }
+
+//    private void rotateMarker(final Marker marker, final float toRotation) {
+//        if (!isMarkerRotating) {
+//            final Handler handler = new Handler();
+//            final long start = SystemClock.uptimeMillis();
+//            final float startRotation = marker.getRotation();
+//            final long duration = 1000;
 //
-//        double y = Math.sin(dLon) * Math.cos(lat2);
-//        double x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1)
-//                * Math.cos(lat2) * Math.cos(dLon);
+//            final Interpolator interpolator = new LinearInterpolator();
 //
-//        double brng = Math.atan2(y, x);
+//            handler.post(new Runnable() {
+//                @Override
+//                public void run() {
+//                    isMarkerRotating = true;
 //
-//        brng = Math.toDegrees(brng);
-//        brng = (brng + 360) % 360;
-
-        return beginL.bearingTo(endL);
-    }
-
-    private void rotateMarker(final Marker marker, final float toRotation) {
-        if (!isMarkerRotating) {
-            final Handler handler = new Handler();
-            final long start = SystemClock.uptimeMillis();
-            final float startRotation = marker.getRotation();
-            final long duration = 1000;
-
-            final Interpolator interpolator = new LinearInterpolator();
-
-            handler.post(new Runnable() {
-                @Override
-                public void run() {
-                    isMarkerRotating = true;
-
-                    long elapsed = SystemClock.uptimeMillis() - start;
-                    float t = interpolator.getInterpolation((float) elapsed / duration);
-
-                    float rot = t * toRotation + (1 - t) * startRotation;
-
-                    marker.setRotation(-rot > 180 ? rot / 2 : rot);
-                    if (t < 1.0) {
-                        // Post again 16ms later.
-                        handler.postDelayed(this, 16);
-                    } else {
-                        isMarkerRotating = false;
-                    }
-                }
-            });
-        }
-    }
+//                    long elapsed = SystemClock.uptimeMillis() - start;
+//                    float t = interpolator.getInterpolation((float) elapsed / duration);
+//
+//                    float rot = t * toRotation + (1 - t) * startRotation;
+//
+//                    marker.setRotation(-rot > 180 ? rot / 2 : rot);
+//                    if (t < 1.0) {
+//                        // Post again 16ms later.
+//                        handler.postDelayed(this, 16);
+//                    } else {
+//                        isMarkerRotating = false;
+//                    }
+//                }
+//            });
+//        }
+//    }
 
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.busbutton:
                 if (latLngs.size() > 0) {
-                    CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLngs.get(0), 15);
-                    googleMap.animateCamera(cameraUpdate);
+                    moveToBusLocation(latLngs.get(0));
+                } else {
+                    Toast.makeText(this, "Please wait collecting information", Toast.LENGTH_SHORT).show();
                 }
                 break;
             case R.id.tersatbutton:
                 if (mTerainSatButton.getTag() != null && ((String) mTerainSatButton.getTag()).equalsIgnoreCase("ter")) {
                     mTerainSatButton.setImageResource(R.drawable.terrain);
                     mTerainSatButton.setTag("sat");
-                    googleMap.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
+                    googleMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
                 } else {
                     mTerainSatButton.setImageResource(R.drawable.satellite);
                     mTerainSatButton.setTag("ter");
@@ -503,14 +578,30 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
             case R.id.stopsbutton:
                 startActivity(new Intent(this, StopSelectionActivity.class));
                 break;
+            default:
+                if (mMyLocationButton.getTag() != null && ((String) mMyLocationButton.getTag()).equalsIgnoreCase("disable")) {
+                    mMyLocationButton.setImageResource(R.drawable.gps_off);
+                    mMyLocationButton.setTag("enable");
+                    enableLocation(false);
+                } else {
+                    mMyLocationButton.setImageResource(R.drawable.gps);
+                    mMyLocationButton.setTag("disable");
+                    enableLocation(true);
+                }
+                break;
 
         }
+    }
+
+    private void moveToBusLocation(LatLng latLng) {
+        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 17);
+        googleMap.animateCamera(cameraUpdate);
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (grantResults.length >= 3) {
-            enableLocation();
+            enableLocation(true);
         } else {
             Toast.makeText(this, "Cant run application without permission", Toast.LENGTH_SHORT).show();
             finish();
@@ -545,4 +636,8 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         }
     }
 
+    @Override
+    public void onLocationChanged(Location location) {
+        this.myLocation = location;
+    }
 }

@@ -16,6 +16,8 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 
 import com.bumptech.glide.Glide;
@@ -37,12 +39,13 @@ import com.launcher.mummu.cabclient.utils.UIUtil;
  * Created by muhammed on 2/20/2017.
  */
 
-public class StopSelectionActivity extends Container implements OnMapReadyCallback, GoogleMap.OnMapLongClickListener {
+public class StopSelectionActivity extends Container implements OnMapReadyCallback, GoogleMap.OnMapLongClickListener, View.OnClickListener, NotificationTimeDialogFragment.OnButtonClickListener {
 
     private static final int REQUEST_PERMISSION = 10214;
     private MapFragment mMapFragment;
     private GoogleMap googleMap;
     private Toolbar mToolbar;
+    private Button mlocationRangeButton;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -61,8 +64,27 @@ public class StopSelectionActivity extends Container implements OnMapReadyCallba
         fragmentTransaction.add(R.id.stopsContainer, mMapFragment);
         fragmentTransaction.commit();
         mMapFragment.getMapAsync(this);
+        mlocationRangeButton = (Button) findViewById(R.id.locationRangeButton);
 
+        mlocationRangeButton.setOnClickListener(this);
 
+        // loadPrevious value
+
+        loadButtonDetails();
+
+    }
+
+    private void loadButtonDetails() {
+        long notificationKilometerRange = CabStorageUtil.getNotificationKilometerRange(this);
+        if (notificationKilometerRange == 0l) {
+            mlocationRangeButton.setText("You will get notification before 1Km");
+        } else if (notificationKilometerRange == NotificationTimeDialogFragment.ONE_KILOMTER) {
+            mlocationRangeButton.setText("You will get notification before 1Km");
+        } else if (notificationKilometerRange == NotificationTimeDialogFragment.TWO_KILOMTER) {
+            mlocationRangeButton.setText("You will get notification before 2Km");
+        } else {
+            mlocationRangeButton.setText("You will get notification before 3Km");
+        }
     }
 
     @Override
@@ -115,11 +137,16 @@ public class StopSelectionActivity extends Container implements OnMapReadyCallba
                 finish();
                 break;
             case R.id.notificationTime:
-                NotificationTimeDialogFragment fragment = new NotificationTimeDialogFragment();
-                fragment.show(getSupportFragmentManager(), fragment.getClass().getName());
+                showDialog();
                 break;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void showDialog() {
+        NotificationTimeDialogFragment fragment = new NotificationTimeDialogFragment();
+        fragment.show(getSupportFragmentManager(), fragment.getClass().getName());
+        fragment.setOnButtonClickListener(this);
     }
 
     @Override
@@ -185,4 +212,17 @@ public class StopSelectionActivity extends Container implements OnMapReadyCallba
         return super.onCreateOptionsMenu(menu);
     }
 
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.locationRangeButton:
+                showDialog();
+                break;
+        }
+    }
+
+    @Override
+    public void onButtonClicked() {
+        loadButtonDetails();
+    }
 }

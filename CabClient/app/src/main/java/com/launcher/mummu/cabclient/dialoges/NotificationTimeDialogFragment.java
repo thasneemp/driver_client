@@ -28,6 +28,7 @@ public class NotificationTimeDialogFragment extends AppCompatDialogFragment impl
     public static final long THREE_KILOMTER = 3000;
     private TextView buttonTextView;
     private RadioGroup mRadioGroup;
+    private OnButtonClickListener listener;
 
 
     @Override
@@ -47,8 +48,9 @@ public class NotificationTimeDialogFragment extends AppCompatDialogFragment impl
             @Override
             public void onClick(View v) {
                 dismiss();
-                CabStorageUtil.storeDialogPref(getContext(), true);
-                CabStorageUtil.storeDialogTime(getContext(), System.currentTimeMillis());
+                if (listener != null) {
+                    listener.onButtonClicked();
+                }
             }
         });
         long notificationKilometerRange = CabStorageUtil.getNotificationKilometerRange(getContext());
@@ -92,8 +94,8 @@ public class NotificationTimeDialogFragment extends AppCompatDialogFragment impl
         super.onResume();
     }
 
-    public void setOnClickListener(View.OnClickListener listener) {
-        buttonTextView.setOnClickListener(listener);
+    public void setOnButtonClickListener(OnButtonClickListener listener) {
+        this.listener = listener;
     }
 
     @Override
@@ -114,5 +116,9 @@ public class NotificationTimeDialogFragment extends AppCompatDialogFragment impl
                 CabStorageUtil.setNotificationKilometerRange(getContext(), THREE_KILOMTER);
                 break;
         }
+    }
+
+    public interface OnButtonClickListener {
+        void onButtonClicked();
     }
 }
