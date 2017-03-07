@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -10,7 +11,6 @@
 
 
     </FrameLayout>
-
 
     <ImageButton
         android:id="@+id/busbutton"
@@ -23,6 +23,7 @@
         android:src="@drawable/bus"
         android:text="Button" />
 
+    <include layout="@layout/trafic_label" />
 
     <ImageButton
         android:id="@+id/myLocationbutton"
@@ -71,13 +72,15 @@
         android:layout_marginTop="10dp"
         android:background="@drawable/bus_button_selector"
         android:src="@drawable/edit_location"
-        android:text="Button" />
+        android:text="Button"
+        android:visibility="gone" />
 
     <de.hdodenhof.circleimageview.CircleImageView xmlns:app="http://schemas.android.com/apk/res-auto"
         android:id="@+id/profile_image"
         android:layout_width="60dp"
         android:layout_height="60dp"
         android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true"
         android:layout_marginRight="10dp"
         android:layout_marginTop="10dp"
         app:civ_border_color="#484948"
@@ -98,5 +101,5 @@
         android:text="Calculating..."
 
         android:textColor="@color/white"
-        android:visibility="visible" />
+        android:visibility="gone" />
 </RelativeLayout>

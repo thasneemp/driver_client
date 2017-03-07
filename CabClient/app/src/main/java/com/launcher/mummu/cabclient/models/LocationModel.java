@@ -10,8 +10,18 @@ public class LocationModel {
     private double lat;
     private double longe;
     private float bearing;
+    private boolean enable;
+    private String message;
 
     public LocationModel() {
+    }
+
+    public boolean isEnable() {
+        return enable;
+    }
+
+    public void setEnable(boolean enable) {
+        this.enable = enable;
     }
 
     public double getLat() {
@@ -36,5 +46,14 @@ public class LocationModel {
 
     public void setBearing(float bearing) {
         this.bearing = bearing;
+    }
+
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 }

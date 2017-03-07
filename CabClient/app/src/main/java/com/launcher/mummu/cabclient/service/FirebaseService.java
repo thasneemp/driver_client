@@ -2,12 +2,10 @@ package com.launcher.mummu.cabclient.service;
 
 import android.app.Service;
 import android.content.Intent;
-import android.location.Location;
 import android.os.Binder;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 
-import com.google.android.gms.maps.model.LatLng;
 import com.google.firebase.crash.FirebaseCrash;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
@@ -16,7 +14,6 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.launcher.mummu.cabclient.CabUserApplication;
-import com.launcher.mummu.cabclient.dialoges.NotificationTimeDialogFragment;
 import com.launcher.mummu.cabclient.models.MessageModel;
 import com.launcher.mummu.cabclient.storage.CabStorageUtil;
 import com.launcher.mummu.cabclient.storage.PreferenceHelperEvening;
@@ -74,26 +71,26 @@ public class FirebaseService extends Service implements ChildEventListener, Valu
             if (listener != null) {
                 listener.onValueChanged(dataSnapshot);
             }
-            DataSnapshot latitude = dataSnapshot.child(FirebaseUtil.LATITUDE_TAG);
-            DataSnapshot longitude = dataSnapshot.child(FirebaseUtil.LONGITUDE_TAG);
-            double latiudeLn = (double) latitude.getValue();
-            double longitudeLn = (double) longitude.getValue();
-            LatLng locationLatLng = CabStorageUtil.getLocationLatLng(this);
-            if (locationLatLng != null) {
-                float[] floats = new float[1];
-                Location.distanceBetween(locationLatLng.latitude, locationLatLng.longitude, latiudeLn, longitudeLn, floats);
-                long kilometerRange = CabStorageUtil.getNotificationKilometerRange(getApplicationContext());
-                if (floats[0] < (kilometerRange == 0l ? NotificationTimeDialogFragment.ONE_KILOMTER : kilometerRange)) {
-                    if (listener != null) {
-                        listener.onLocationNearToYou(floats[0]);
-                    }
-                    doBackCheck();
-                }
-
-            }
+//            DataSnapshot latitude = dataSnapshot.child(FirebaseUtil.LATITUDE_TAG);
+//            DataSnapshot longitude = dataSnapshot.child(FirebaseUtil.LONGITUDE_TAG);
+//            double latiudeLn = (double) latitude.getValue();
+//            double longitudeLn = (double) longitude.getValue();
+//            LatLng locationLatLng = CabStorageUtil.getLocationLatLng(this);
+//            if (locationLatLng != null) {
+//                float[] floats = new float[1];
+//                Location.distanceBetween(locationLatLng.latitude, locationLatLng.longitude, latiudeLn, longitudeLn, floats);
+//                long kilometerRange = CabStorageUtil.getNotificationKilometerRange(getApplicationContext());
+//                if (floats[0] < (kilometerRange == 0l ? NotificationTimeDialogFragment.ONE_KILOMTER : kilometerRange)) {
+//                    if (listener != null) {
+//                        listener.onLocationNearToYou(floats[0]);
+//                    }
+////                    doBackCheck();
+//                }
+//
+//            }
         } catch (Exception e) {
             FirebaseCrash.report(e);
-            doBackCheck();
+//            doBackCheck();
         }
     }
 

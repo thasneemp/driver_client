@@ -34,6 +34,7 @@ public class CabStorageUtil {
     private static final String IS_FIRST_TIME_DILAOG = "is_first_time_dilaog";
     private static final String USER_IMAGE = "user_image";
     private static final String NOTIFICATION_KILOMETER_RANGE = "notification_km_range";
+    private static final String IS_TRAFFIC_ENABLED = "is_traffic_enabled";
 
     public static void setUsername(Context context, String key, String value) {
         CabStorage.insertStringData(context, key, value);
@@ -222,5 +223,13 @@ public class CabStorageUtil {
 
     public static long getNotificationKilometerRange(Context context) {
         return CabStorage.getLongData(context, NOTIFICATION_KILOMETER_RANGE);
+    }
+
+    public static boolean isTrafficEnabled(Context context) {
+        return CabStorage.getBooleanDataDefaultTrue(context, IS_TRAFFIC_ENABLED);
+    }
+
+    public static void setTrafficEnabled(Context context, boolean isChecked) {
+        CabStorage.insertBooleanData(context, IS_TRAFFIC_ENABLED, isChecked);
     }
 }

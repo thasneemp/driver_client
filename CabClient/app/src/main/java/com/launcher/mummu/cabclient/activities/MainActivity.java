@@ -22,10 +22,12 @@ import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
+import android.support.v7.widget.SwitchCompat;
 import android.util.Log;
 import android.view.View;
 import android.view.animation.Interpolator;
 import android.view.animation.LinearInterpolator;
+import android.widget.CompoundButton;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.TextView;
@@ -51,6 +53,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.launcher.mummu.cabclient.R;
+import com.launcher.mummu.cabclient.adapters.CustomInfoWindowAdapter;
 import com.launcher.mummu.cabclient.dialoges.PromotionDialogFragment;
 import com.launcher.mummu.cabclient.dialoges.TimeDialogFragment;
 import com.launcher.mummu.cabclient.dialoges.WelcomeDialogFragment;
@@ -84,7 +87,7 @@ import de.hdodenhof.circleimageview.CircleImageView;
  * Created by muhammed on 2/17/2017.
  */
 
-public class MainActivity extends Container implements OnMapReadyCallback, FirebaseService.OnCloudValueChangeListener, View.OnClickListener, GPSService.OnLocationChange {
+public class MainActivity extends Container implements OnMapReadyCallback, FirebaseService.OnCloudValueChangeListener, View.OnClickListener, GPSService.OnLocationChange, CompoundButton.OnCheckedChangeListener {
     private static final int PERMISSION_REQUEST = 100;
     private static final double LAT_START = 10.009385;
     private static final double LONG_START = 76.361632;
@@ -94,7 +97,7 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
     private static final double LONG_STOP2 = 76.306478;
     private static final int REQUEST_SETTINGS = 12458;
     private static final float BEARING_OFFSET = 20;
-    private static final int ANIMATE_SPEEED_TURN = 1000;
+    private static final int ANIMATE_SPEED_TURN = 1000;
 
     private static final int TIME_INTERVAL = 20000; // # milliseconds, desired time passed between two back presses.
     private static final String URL_DISTANCE = "https://maps.googleapis.com/maps/api/distancematrix/json?";
@@ -120,6 +123,7 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
     private FrameLayout frameLayout;
     private TextView mInfoTextView;
     private Location myLocation;
+    private SwitchCompat mLiveTrafficEnableCompat;
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -169,7 +173,7 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         Intent intent = new Intent(this, FirebaseService.class);
         bindService(intent, serviceConnection,
                 Context.BIND_AUTO_CREATE);
-        addUserStop();
+//        addUserStop();
         EventBus.getDefault().register(this);
 
         FirebaseStorage.updateLastSeen(new Date(), CabStorageUtil.getUUId(this));
@@ -226,6 +230,10 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         frameLayout = (FrameLayout) findViewById(R.id.container);
         mCircleImageView = (CircleImageView) findViewById(R.id.profile_image);
         mInfoTextView = (TextView) findViewById(R.id.kilometerDisplayTextView);
+        mLiveTrafficEnableCompat = (SwitchCompat) findViewById(R.id.liveTrafficButton);
+
+        mLiveTrafficEnableCompat.setChecked(CabStorageUtil.isTrafficEnabled(this));
+        mLiveTrafficEnableCompat.setOnCheckedChangeListener(this);
 
         mBusButton.setOnClickListener(this);
         mMyLocationButton.setOnClickListener(this);
@@ -261,8 +269,11 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         this.googleMap = googleMap;
         googleMap.getUiSettings().setMyLocationButtonEnabled(false);
         googleMap.getUiSettings().setTiltGesturesEnabled(false);
+        googleMap.getUiSettings().setRotateGesturesEnabled(false);
         googleMap.setTrafficEnabled(true);
         googleMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+        googleMap.setTrafficEnabled(CabStorageUtil.isTrafficEnabled(this));
+        googleMap.setInfoWindowAdapter(new CustomInfoWindowAdapter(this));
         addStartPosition();
     }
 
@@ -270,7 +281,7 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
         MarkerOptions claysysMarkerOptions = new MarkerOptions().position(new LatLng(LAT_START, LONG_START)).title(getString(R.string.claysys_stop)).icon(BitmapDescriptorFactory.fromResource(R.drawable.claysys_stop));
         MarkerOptions stop1MarkerOptions = new MarkerOptions().position(new LatLng(LAT_STOP1, LONG_STOP1)).title(getString(R.string.chembumukku_stop)).icon(BitmapDescriptorFactory.fromResource(R.drawable.stops));
         MarkerOptions stop2MarkerOptions = new MarkerOptions().position(new LatLng(LAT_STOP2, LONG_STOP2)).title(getString(R.string.palarivattom_stop)).icon(BitmapDescriptorFactory.fromResource(R.drawable.stops));
-        addUserStop();
+//        addUserStop();
         googleMap.addMarker(claysysMarkerOptions);
         googleMap.addMarker(stop1MarkerOptions);
         googleMap.addMarker(stop2MarkerOptions);
@@ -342,27 +353,38 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
     @Override
     public void onValueChanged(DataSnapshot dataSnapshot) {
         LocationModel value = dataSnapshot.getValue(LocationModel.class);
-        LatLng latLng = new LatLng(value.getLat(), value.getLonge());
-        if (latLngs.size() > 1) {
-            latLngs.remove(0);
-            latLngs.add(latLng);
-        } else {
-            latLngs.add(latLng);
-            moveToBusLocation(latLng);
-        }
-
-        if (icon == null) {
-            icon = new MarkerOptions().position(latLng).icon(BitmapDescriptorFactory.fromResource(R.drawable.bus_logo)).title("Cab");
-            marker = googleMap.addMarker(icon);
-        }
-        if (latLngs.size() > 1) {
-            animateMarker(latLngs.get(1), false, marker, value.getBearing());
-            if (myLocation != null) {
-                showText(myLocation, convertLatLngToLocation(latLngs.get(1)));
+        if (value.isEnable()) {
+            LatLng latLng = new LatLng(value.getLat(), value.getLonge());
+            if (latLngs.size() > 1) {
+                latLngs.remove(0);
+                latLngs.add(latLng);
+            } else {
+                latLngs.add(latLng);
+                moveToBusLocation(latLng);
             }
 
-        }
+            if (icon == null) {
+                icon = new MarkerOptions().position(latLng).icon(BitmapDescriptorFactory.fromResource(R.drawable.bus_logo)).title("Cab");
+                marker = googleMap.addMarker(icon);
+            }
+            marker.setVisible(true);
+            if (latLngs.size() > 1) {
+                animateMarker(latLngs.get(1), false, marker, value.getBearing());
+                if (myLocation != null) {
+                    showText(myLocation, convertLatLngToLocation(latLngs.get(1)));
+                }
 
+            }
+        } else {
+            if (marker != null) {
+                marker.setVisible(false);
+            }
+            PromotionDialogFragment fragment = new PromotionDialogFragment();
+            fragment.setMessageText(value.getMessage());
+            fragment.setButtonText("Dismiss");
+            fragment.show(getSupportFragmentManager(), fragment.getClass().getName());
+
+        }
     }
 
     private void showText(Location fromLatLng, Location toLatLng) {
@@ -386,9 +408,14 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
                             if (elements.length > 0) {
                                 Distance distance = elements[0].getDistance();
                                 Duration duration = elements[0].getDuration();
-                                mInfoTextView.setVisibility(View.VISIBLE);
+                                mInfoTextView.setVisibility(View.GONE);
                                 mInfoTextView.setText("Cab is " + distance.getText() + " away from you,\nit will take approximately " +
                                         duration.getText() + ".\nNow at " + distanceMain.getDestination_addresses()[0].split(",")[0]);
+                                if (icon != null) {
+                                    marker.setTitle(mInfoTextView.getText().toString());
+                                    marker.hideInfoWindow();
+                                    marker.showInfoWindow();
+                                }
                                 mBackPressed = System.currentTimeMillis();
                             }
                         }
@@ -478,7 +505,7 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
                                     .build();
                     googleMap.animateCamera(
                             CameraUpdateFactory.newCameraPosition(cameraPosition),
-                            ANIMATE_SPEEED_TURN,
+                            ANIMATE_SPEED_TURN,
                             null);
 
                 }
@@ -587,13 +614,30 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
                     mMyLocationButton.setImageResource(R.drawable.gps);
                     mMyLocationButton.setTag("disable");
                     enableLocation(true);
+
+                    moveToMyLocation();
                 }
                 break;
 
         }
     }
 
+    private void moveToMyLocation() {
+        if (myLocation != null) {
+            LatLng latLng = convertLocationToLatLng(myLocation);
+            moveByLatLng(latLng);
+        }
+    }
+
+    private LatLng convertLocationToLatLng(Location myLocation) {
+        return new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
+    }
+
     private void moveToBusLocation(LatLng latLng) {
+        moveByLatLng(latLng);
+    }
+
+    private void moveByLatLng(LatLng latLng) {
         CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 17);
         googleMap.animateCamera(cameraUpdate);
     }
@@ -639,5 +683,17 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
     @Override
     public void onLocationChanged(Location location) {
         this.myLocation = location;
+    }
+
+    @Override
+    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+        switch (buttonView.getId()) {
+            case R.id.liveTrafficButton:
+                googleMap.setTrafficEnabled(isChecked);
+                CabStorageUtil.setTrafficEnabled(this, isChecked);
+                break;
+            default:
+                break;
+        }
     }
 }

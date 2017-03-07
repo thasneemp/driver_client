@@ -65,18 +65,18 @@ public class Settings extends Container implements View.OnClickListener, Compoun
         mLogoutButton.setOnClickListener(this);
         firebaseAuth = FirebaseAuth.getInstance();
 
-        mSwitchMorning.setChecked(CabStorageUtil.isMorningChecked(this));
-        mSwitchEvening.setChecked(CabStorageUtil.isEveningChecked(this));
+//        mSwitchMorning.setChecked(CabStorageUtil.isMorningChecked(this));
+//        mSwitchEvening.setChecked(CabStorageUtil.isEveningChecked(this));
 
 
         mSwitchCompat.setChecked(CabStorageUtil.isNotificationOn(this));
-        mSwitchMorning.setEnabled(CabStorageUtil.isNotificationOn(this));
-        mSwitchEvening.setEnabled(CabStorageUtil.isNotificationOn(this));
+//        mSwitchMorning.setEnabled(CabStorageUtil.isNotificationOn(this));
+//        mSwitchEvening.setEnabled(CabStorageUtil.isNotificationOn(this));
 
 
         mSwitchCompat.setOnCheckedChangeListener(this);
-        mSwitchMorning.setOnCheckedChangeListener(this);
-        mSwitchEvening.setOnCheckedChangeListener(this);
+//        mSwitchMorning.setOnCheckedChangeListener(this);
+//        mSwitchEvening.setOnCheckedChangeListener(this);
 
         mAboutCardView.setOnClickListener(this);
         mFeedbackCardView.setOnClickListener(this);

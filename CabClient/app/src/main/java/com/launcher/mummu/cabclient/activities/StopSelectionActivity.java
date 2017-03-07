@@ -38,7 +38,7 @@ import com.launcher.mummu.cabclient.utils.UIUtil;
 /**
  * Created by muhammed on 2/20/2017.
  */
-
+@Deprecated
 public class StopSelectionActivity extends Container implements OnMapReadyCallback, GoogleMap.OnMapLongClickListener, View.OnClickListener, NotificationTimeDialogFragment.OnButtonClickListener {
 
     private static final int REQUEST_PERMISSION = 10214;

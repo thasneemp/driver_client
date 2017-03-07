@@ -106,6 +106,7 @@
                 android:layout_below="@id/card_view_two"
                 android:layout_gravity="center"
                 android:layout_marginTop="10dp"
+                android:visibility="gone"
                 card_view:cardCornerRadius="1dp"
                 card_view:cardElevation="1dp"
                 card_view:contentPadding="10dp">
@@ -143,6 +144,7 @@
                 android:layout_height="wrap_content"
                 android:layout_below="@id/card_view_three"
                 android:layout_gravity="center"
+                android:visibility="gone"
                 card_view:cardCornerRadius="1dp"
                 card_view:cardElevation="1dp"
                 card_view:contentPadding="10dp">
