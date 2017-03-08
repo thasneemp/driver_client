@@ -157,11 +157,14 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
 
     @Override
     protected void onResume() {
-
-        Intent service = new Intent(this, FirebaseService.class);
-        startService(service);
-        Intent gpsService = new Intent(this, GPSService.class);
-        startService(gpsService);
+        if (!Utils.isMyServiceRunning(this, FirebaseService.class)) {
+            Intent service = new Intent(this, FirebaseService.class);
+            startService(service);
+        }
+        if (!Utils.isMyServiceRunning(this, GPSService.class)) {
+            Intent gpsService = new Intent(this, GPSService.class);
+            startService(gpsService);
+        }
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             Utils.showGPSDisabledAlertToUser(this);
@@ -379,10 +382,10 @@ public class MainActivity extends Container implements OnMapReadyCallback, Fireb
             if (marker != null) {
                 marker.setVisible(false);
             }
-            PromotionDialogFragment fragment = new PromotionDialogFragment();
-            fragment.setMessageText(value.getMessage());
-            fragment.setButtonText("Dismiss");
-            fragment.show(getSupportFragmentManager(), fragment.getClass().getName());
+//            PromotionDialogFragment fragment = new PromotionDialogFragment();
+//            fragment.setMessageText(value.getMessage());
+//            fragment.setButtonText("Dismiss");
+//            fragment.show(getSupportFragmentManager(), fragment.getClass().getName());
 
         }
     }
